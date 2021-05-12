@@ -9,11 +9,10 @@
 #include <usbcfg.h>
 #include <main.h>
 #include <motors.h>
-#include <camera/po8030.h>
+//#include <camera/po8030.h>
 #include <chprintf.h>
 
-#include <pi_regulator.h>
-// #include <process_image.h>
+#include <control_robot.h>
 #include <sensors/proximity.h>
 #include <spi_comm.h>
 
@@ -55,16 +54,16 @@ int main(void)
     serial_start();
     //start the USB communication
     usb_start();
-    //starts the camera
-    dcmi_start();
-	po8030_start();
+    
 	//inits the motors
 	motors_init();
 
+	// starts the IR proximity captors 
 	proximity_start();
 
 	//stars the threads for the pi regulator and the processing of the image
-	pi_regulator_start();
+	//pi_regulator_start();
+	control_robot_start(); 
 	//process_image_start(); //ça on met en commentaire
 
     /* Infinite loop. */

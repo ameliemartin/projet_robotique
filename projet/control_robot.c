@@ -8,8 +8,14 @@
 #include <main.h>
 #include <motors.h>
 #include <control_robot.h>
-#include <process_image.h>
+//#include <process_image.h>
 #include <sensors/proximity.h>
+
+
+
+
+
+//Functions allowing the robot to rotate during the simulation
 void quarter_turn_right(void){
 
     right_motor_set_speed(-600);
@@ -59,9 +65,9 @@ static THD_FUNCTION(ControlRobot, arg) {
         //chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche = %d\n", get_prox(7));
 
         //chprintf((BaseSequentialStream *)&SD3, "capteur gauche = %d\n", get_prox(5));
-        chprintf((BaseSequentialStream *)&SD3, "capteur droit = %d\n", get_prox(2));
-        diff_prox_left = get_prox(7) - get_prox(6); 
-        chprintf((BaseSequentialStream *)&SD3, " diff: %d \n", diff_prox_left);
+        //chprintf((BaseSequentialStream *)&SD3, "capteur droit = %d\n", get_prox(2));
+        //diff_prox_left = get_prox(7) - get_prox(6); 
+        //chprintf((BaseSequentialStream *)&SD3, " diff: %d \n", diff_prox_left);
 
         // Numérotation des capteurs : 
         // IR0 (front-right) + IR1 (front-right-45deg) + IR2 (right) + IR3 (back-right) 
@@ -71,10 +77,12 @@ static THD_FUNCTION(ControlRobot, arg) {
         if (get_prox(0) > 150 || get_prox(1) > 230 || get_prox(6) > 230 || get_prox(7) > 150 ) // à ajuster et à mesurer après
         //if (get_prox(0) > 150 || get_prox(1) > 250 || get_prox(6) > 250 || get_prox(7) > 150 ) // à ajuster et à mesurer après
         {
+            chprintf((BaseSequentialStream *)&SD3, "objet en face\n");
 
             //contournement d'un objet: si il detecte un objet devant lui mais pas sur les côtés : va contourner l'obstacle
         	if(get_prox(2) <= 70 && get_prox(5) <= 70 )
             {
+                chprintf((BaseSequentialStream *)&SD3, "rien sur les cotes\n");
 
                 // alignement à ce moment la ou un quart de tour 
                 //avant de commencer le contournement, on voit en fonction de l'alignement du robot si on va faire 1/4 tour complet ou juste s'aligner
@@ -82,6 +90,7 @@ static THD_FUNCTION(ControlRobot, arg) {
                 //premier quart de tour (dépendra de la freq pour l'instant à gauche)
                 quarter_turn_left(); // ca sera à supprimer si ok avec ce qui est en dessous. */
 
+                // ALIGNEMENT
                 //uniquement pour capteurs gauche 
                /* diff_prox_left = get_prox(7) - get_prox(6); 
                 //diff_prox_right = get_prox(0) - get_prox(1); 
@@ -107,42 +116,59 @@ static THD_FUNCTION(ControlRobot, arg) {
                     }
                 }*/
                 //manque un cas si les 2 sont inf 
+
+                //if (get_prox(0) < 150  || get_prox(7) < 150){
+                    
+                  //  chprintf((BaseSequentialStream *)&SD3, "quelque chose bloque en face juste apres le quart de tour \n");
+                     
+                //}
                 
-                while(get_prox(2) > 60 && get_prox(3) > 60){ //valeurs trouvées avec essais 
+                while(get_prox(2) > 60 && get_prox(3) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //valeurs trouvées avec essais 
                     //continue tout droit 
                     right_motor_set_speed(600);
                     left_motor_set_speed(600); 
-                    chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures 
+                    chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
+
                         
                 }
-                
-                chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
-                
-                //deuxième quart de tour
-               quarter_turn_right(); // a changer si premier quart de tour gauche
-        			
+
+                if (get_prox(0) > 150  || get_prox(7) > 150){
+                    
+                    chprintf((BaseSequentialStream *)&SD3, "quelque chose bloque en face \n");
+                     
+                }
+                else {
+                    chprintf((BaseSequentialStream *)&SD3, "rien ne bloque  \n");
+                    chprintf((BaseSequentialStream *)&SD3, "objet depasse \n");
+                    
+                    chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+                    
+                    //deuxième quart de tour
+                   quarter_turn_right(); // a changer si premier quart de tour gauche
+                   chprintf((BaseSequentialStream *)&SD3, "objet contourne \n");
+                }         			
         	}
         	// quart de tour vers la gauche comme objet à droite
         	else if (get_prox(2) > 70 && get_prox(5) <= 70){
+                chprintf((BaseSequentialStream *)&SD3, "objet sur la droite \n");
         		quarter_turn_left();
-    			
         	}
         	// quart de tour vers la droite quand objet à gauche
             else if (get_prox(5) > 70 && get_prox(2) <= 70){
-
-              quarter_turn_right();
+                chprintf((BaseSequentialStream *)&SD3, "objet sur la gauche \n");
+                quarter_turn_right();
         	}
         	// dans un cul de sac, fait demi tour
         	else {
+                chprintf((BaseSequentialStream *)&SD3, "dans un cul de sac \n");
         		half_turn();
-        		
         	}
         }
-
         //100Hz
         chThdSleepUntilWindowed(time, time + MS2ST(10));
     }
 }
+    
 
 void control_robot_start(void){
 	chThdCreateStatic(waControlRobot, sizeof(waControlRobot), NORMALPRIO, ControlRobot, NULL);

@@ -28,33 +28,35 @@ static float micBack_output[FFT_SIZE];
 #define MIN_VALUE_THRESHOLD	10000
 
 #define MIN_FREQ			10	//we don't analyze before this index to not use resources for nothing
-#define FREQ_FORWARD		16	//250Hz
-#define FREQ_LEFT			19	//296Hz
+//#define FREQ_FORWARD		16	//250Hz
+#define FREQ_LEFT			19	//296Hz est ce qu'on les espaces plus ? 
 #define FREQ_RIGHT			23	//359HZ
-#define FREQ_BACKWARD		26	//406Hz
+//#define FREQ_BACKWARD		26	//406Hz
 #define MAX_FREQ			30	//we don't analyze after this index to not use resources for nothing
 
-#define FREQ_FORWARD_L		(FREQ_FORWARD-1)
-#define FREQ_FORWARD_H		(FREQ_FORWARD+1)
+
+//#define FREQ_FORWARD_L		(FREQ_FORWARD-1)
+//#define FREQ_FORWARD_H		(FREQ_FORWARD+1)
 #define FREQ_LEFT_L			(FREQ_LEFT-1)
 #define FREQ_LEFT_H			(FREQ_LEFT+1)
 #define FREQ_RIGHT_L		(FREQ_RIGHT-1)
 #define FREQ_RIGHT_H		(FREQ_RIGHT+1)
-#define FREQ_BACKWARD_L		(FREQ_BACKWARD-1)
-#define FREQ_BACKWARD_H		(FREQ_BACKWARD+1)
+//#define FREQ_BACKWARD_L		(FREQ_BACKWARD-1)
+//#define FREQ_BACKWARD_H		(FREQ_BACKWARD+1)
 
 /*
 *	Simple function used to detect the highest value in a buffer
 *	and to execute a motor command depending on it
 */
-void sound_remote(float* data){
+bool sound_remote(float* data){
 	float max_norm = MIN_VALUE_THRESHOLD;
 	int16_t max_norm_index = -1;
 
 	systime_t time_begin;
 	systime_t time_end;
-	bool turned = false; 
-	//bool turn_left = false;
+	//bool turned = false; 
+	bool turn_left = false;
+	bool stop = false ; 
 	//bool turn_right = false;
 
 	//search for the highest peak
@@ -65,43 +67,36 @@ void sound_remote(float* data){
 		}
 	}
 
-	//go forward
-	if(max_norm_index >= FREQ_FORWARD_L && max_norm_index <= FREQ_FORWARD_H){
-		left_motor_set_speed(600);
-		right_motor_set_speed(600);
-	}
+	
 	//turn left
-	else if(max_norm_index >= FREQ_LEFT_L && max_norm_index <= FREQ_LEFT_H){
+	if(max_norm_index >= FREQ_LEFT_L && max_norm_index <= FREQ_LEFT_H){
 
-		//chThdSleepMilliseconds(580);
-		left_motor_set_speed(-600);
-		right_motor_set_speed(600);
-		chThdSleepMilliseconds(580);
-
-		left_motor_set_speed(600);
-		right_motor_set_speed(600);
-		chThdSleepMilliseconds(580);
+		quarter_turn_left();  // si on utilise ça, mettre les fonctions dans le .h de control robto 
+		stop = false; 
+		//stop = false; 
 	}
 	//turn right
 	else if(max_norm_index >= FREQ_RIGHT_L && max_norm_index <= FREQ_RIGHT_H){
-		left_motor_set_speed(600);
-		right_motor_set_speed(-600);
-		chThdSleepMilliseconds(580);
-
-		left_motor_set_speed(600);
-		right_motor_set_speed(600);
-		chThdSleepMilliseconds(580);		
+		quarter_turn_right(); 
+		stop = false; 
+		//stop = false	
 			
 	}
-	//go backward
-	else if(max_norm_index >= FREQ_BACKWARD_L && max_norm_index <= FREQ_BACKWARD_H){
-		left_motor_set_speed(-600);
-		right_motor_set_speed(-600);
+	else{
+		// cas ou on a pas les bonnes frequences  -- On fait quoi dans le cas du stop ? sinon on retourne ? 
+		// sinon, appel des fonctions quart de tour à cet endroit directement et retour d'un bool uniquement si le robot doit s'arreter ? 
+		stop = true; 
+		//stop = true; 
+	}
+
+	/*if (stop == true ){
+		return stop; 
 	}
 	else{
-		left_motor_set_speed(0);
-		right_motor_set_speed(0);
-	}
+		return turn_left; 
+	}*/
+	// return ici ? 
+	return stop; 
 }
 
 
@@ -114,7 +109,7 @@ void sound_remote(float* data){
 *							so we have [micRight1, micLeft1, micBack1, micFront1, micRight2, etc...]
 *	uint16_t num_samples	Tells how many data we get in total (should always be 640)
 */
-void processAudioData(int16_t *data, uint16_t num_samples){
+bool processAudioData(int16_t *data, uint16_t num_samples){
 
 	/*
 	*
@@ -123,6 +118,7 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 	*	1024 samples, then we compute the FFTs.
 	*
 	*/
+	bool stop = false; 
 	static uint16_t nb_samples = 0;
 		static uint8_t mustSend = 0;
 
@@ -183,7 +179,9 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 			nb_samples = 0;
 			mustSend++;
 
-			sound_remote(micLeft_output);
+			//rajout d'un bool ici ? 
+			stop = sound_remote(micLeft_output);
+			return stop; 
 		}
 	
 }
