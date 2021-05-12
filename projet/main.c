@@ -12,9 +12,17 @@
 //#include <camera/po8030.h>
 #include <chprintf.h>
 
+#include <fft.h>
+#include <communications.h>
+#include <arm_math.h>
+
+
 #include <control_robot.h>
 #include <sensors/proximity.h>
 #include <spi_comm.h>
+#include <audio/microphone.h>
+#include <audio_processing.h>
+
 
 // pour utilisation des fichiers proxi
 messagebus_t bus;
@@ -39,6 +47,25 @@ static void serial_start(void)
 
 	sdStart(&SD3, &ser_cfg); // UART3.
 }
+
+// ajout du TP 5 de ça 
+/*static void timer12_start(void){
+    //General Purpose Timer configuration   
+    //timer 12 is a 16 bit timer so we can measure time
+    //to about 65ms with a 1Mhz counter
+    static const GPTConfig gpt12cfg = {
+        1000000,        //1MHz timer clock in order to measure uS.
+        NULL,           //Timer callback.
+        0,
+        0
+    };
+
+    gptStart(&GPTD12, &gpt12cfg);
+    //let the timer count to max value
+    gptStartContinuous(&GPTD12, 0xFFFF);
+}*/
+
+
 
 int main(void)
 {
@@ -65,6 +92,9 @@ int main(void)
 	//pi_regulator_start();
 	control_robot_start(); 
 	//process_image_start(); //ça on met en commentaire
+
+	mic_start(&processAudioData);
+
 
     /* Infinite loop. */
     while (1) {
