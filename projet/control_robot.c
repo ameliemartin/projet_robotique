@@ -14,8 +14,6 @@
 
 
 
-
-
 //Functions allowing the robot to rotate during the simulation
 void quarter_turn_right(void){
 
@@ -45,7 +43,8 @@ static THD_FUNCTION(ControlRobot, arg) {
     chRegSetThreadName(__FUNCTION__);
     (void)arg;
 
-    systime_t time;
+    systime_t time, time_start, time_stop, time_test;
+    uint32_t diff_time; 
 
     int16_t speed = 600; // besoin de mettre un int ? pas juste une cte ? 
    // int diff_prox_left, diff_prox_right; // pour l'alignement
@@ -56,15 +55,14 @@ static THD_FUNCTION(ControlRobot, arg) {
     left_motor_set_speed(600);
 
 
+
     while(1){
         
         time = chVTGetSystemTime();
-
         
     	right_motor_set_speed(speed);
     	left_motor_set_speed(speed);
 
-        time = chVTGetSystemTime();
         
         //chprintf((BaseSequentialStream *)&SD3, "capteur avant droit - 45  = %d\n", get_prox(1));
         //chprintf((BaseSequentialStream *)&SD3, "capteur avant droit = %d\n", get_prox(0));
@@ -78,18 +76,25 @@ static THD_FUNCTION(ControlRobot, arg) {
 
         //s'il detecte qque chose devant lui
         if (get_prox(0) > 150 || get_prox(1) > 230 || get_prox(6) > 230 || get_prox(7) > 150 ) // à ajuster et à mesurer après
-        //if (get_prox(0) > 150 || get_prox(1) > 250 || get_prox(6) > 250 || get_prox(7) > 150 ) // à ajuster et à mesurer après
         {
+            chprintf((BaseSequentialStream *)&SD3, "quelque chose en face \n");
+
             //contournement d'un objet: si il detecte un objet devant lui mais pas sur les côtés : va contourner l'obstacle
         	if(get_prox(2) <= 70 && get_prox(5) <= 70 )
             {
+                chprintf((BaseSequentialStream *)&SD3, "quelque chose sur les cotes \n");
+
                 turning_direction = get_freq(); 
 
-                if(turning_direction == 1){ //contournement par la gauche 
+// Dans ces boucles, critères de la fréquence à adapter plus tard  
+                if(turning_direction == 1){ //contournement par la gauche de l'obstacle  
+// GAUCHE 
+// A premier quart de tour
                     quarter_turn_left(); 
-
-
-                    while(get_prox(2) > 60 && get_prox(3) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //valeurs trouvées avec essais 
+                    
+                    time_start = chVTGetSystemTime();
+// B
+                    while(get_prox(2) > 60 && get_prox(3) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //tant qu'il capte sur les côtés et que rien devant 
                         //continue tout droit 
                         right_motor_set_speed(600);
                         left_motor_set_speed(600); 
@@ -97,39 +102,145 @@ static THD_FUNCTION(ControlRobot, arg) {
                             
                     }
 
-                    if (get_prox(0) > 150  || get_prox(7) > 150){
+                    if (get_prox(0) > 150  || get_prox(7) > 150){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
                          
                     }
                     else {
-                        chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+                        // sinon on continue  
+                        //chThdSleepMilliseconds(300); //à voir si on rajoute pas ça / si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
                         
-                        //deuxième quart de tour
-                       quarter_turn_right(); // a changer si premier quart de tour gauche
+                        time_stop = chVTGetSystemTime(); 
+                        diff_time = time_stop - time_start; 
+    
+// C deuxième quart de tour
+                        quarter_turn_right(); 
+                        
+                        // on le force à repartir tout droit 
+// D1
+                        right_motor_set_speed(600);
+                        left_motor_set_speed(600); 
+                        chThdSleepMilliseconds(900);
+
+                        
+// D2 tant qu'il y a quelque chose sur le coté, robot avance
+                        while(get_prox(2) > 60 /*&& get_prox(3) > 60*/ && get_prox(0) < 150 && get_prox(7) < 150){ //tant qu'il capte sur les côtés et que rien devant 
+                            //continue tout droit 
+                            right_motor_set_speed(600);
+                            left_motor_set_speed(600); 
+                            chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
+                                
+                        }
+
+                        if (get_prox(0) > 150  || get_prox(7) > 150){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
+                             
+                        }
+                        else {
+                            //pour etre sur d'être dégagé 
+                            chThdSleepMilliseconds(300); 
+                            
+ // E troixième quart de tour
+                            quarter_turn_right(); 
+                            
+                            time = chVTGetSystemTime();
+                            time_test = chVTGetSystemTime();
+                            diff_time = time_stop - time_start; 
+                            
+//F On avance de la meme durée 
+                            while (time_test < (time + (time_stop - time_start)) && get_prox(0) < 150 && get_prox(7) < 150){ //on longe l'obstacle dans le même temps tout en vérifiant que rien devant 
+                                right_motor_set_speed(600);
+                                left_motor_set_speed(600); 
+                                chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
+                                time_test = chVTGetSystemTime();
+                                //chprintf((BaseSequentialStream *)&SD3, "time test  = %d\n", time_test);
+                            }
+                            if (get_prox(0) > 150  || get_prox(7) > 150){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
+                             
+                            }
+                            else{
+// G quatrieme quart de tour 
+                                quarter_turn_left(); 
+                            }
+                        } 
                     } 
                 }
 
-                else if (turning_direction == 2){
-                    quarter_turn_right(); 
 
-                    while(get_prox(4) > 60 && get_prox(5) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //valeurs trouvées avec essais 
+                else if (turning_direction == 2){ //contournement par la droite de l'obstacle 
+// DROITE 
+//A 
+                    quarter_turn_right(); 
+                    time_start = chVTGetSystemTime();                    
+// B 
+                    while(get_prox(4) > 60 && get_prox(5) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //tant qu'il capte sur les coté et que rien devant 
                         //continue tout droit 
                         right_motor_set_speed(600);
                         left_motor_set_speed(600); 
-                        chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures      
-                    }
+                        chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures   
 
+                    }
+                    
                     if (get_prox(0) > 150  || get_prox(7) > 150){
 
                     }
                     else {
                         
-                        chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+                        // sinon on continue  
+                        //chThdSleepMilliseconds(300); //à voir si on rajoute pas ça / si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+                        time_stop = chVTGetSystemTime(); 
+                        diff_time = time_stop - time_start; 
                         
-                        //deuxième quart de tour
-                       quarter_turn_left(); 
+// C deuxième quart de tour
+                        quarter_turn_left(); 
+                       
+                        // on le force à repartir tout droit 
+// D1
+                        right_motor_set_speed(600);
+                        left_motor_set_speed(600); 
+                        chThdSleepMilliseconds(900);
+
+                        
+// D2 tant qu'il y a quelque chose sur le coté, robot avance
+                        while(get_prox(5) > 60 /*&& get_prox(4) > 60*/ && get_prox(0) < 150 && get_prox(7) < 150){ //tant qu'il capte sur les côtés et que rien devant 
+                            //continue tout droit 
+                            right_motor_set_speed(600);
+                            left_motor_set_speed(600); 
+                            chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
+                                
+                        }
+
+                        if (get_prox(0) > 150  || get_prox(7) > 150){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
+                             
+                        }
+                        else {
+                            //pour etre sur d'être dégagé 
+                            chThdSleepMilliseconds(300); 
+                            
+ // E troixième quart de tour
+                            quarter_turn_left(); 
+                            
+                            time = chVTGetSystemTime();
+                            time_test = chVTGetSystemTime();
+                            diff_time = time_stop - time_start; 
+                            
+//F On avance de la meme durée 
+                            while (time_test < (time + (time_stop - time_start)) && get_prox(0) < 150 && get_prox(7) < 150){ //on longe l'obstacle dans le même temps tout en vérifiant que rien devant 
+                                right_motor_set_speed(600);
+                                left_motor_set_speed(600); 
+                                chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
+                                time_test = chVTGetSystemTime();
+                                //chprintf((BaseSequentialStream *)&SD3, "time test  = %d\n", time_test);
+                            }
+                            if (get_prox(0) > 150  || get_prox(7) > 150){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
+                             
+                            }
+                            else{
+// G quatrieme quart de tour 
+                                quarter_turn_right(); 
+                            }
+                        } 
                     } 
                 }
-                else { // mettre un cas si pas de fréquence ou fréquence pas dans l'échelle
+                else { // si pas de fréquence ou pas dans les gammes de fréquence, on attend qu'on nous en donne une
                     while (turning_direction == 0){
                         right_motor_set_speed(0);
                         left_motor_set_speed(0);
