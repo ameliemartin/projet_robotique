@@ -87,7 +87,9 @@ static THD_FUNCTION(ControlRobot, arg) {
 
    // int diff_prox_left, diff_prox_right; // pour l'alignement
     //float distance_cm;
-    int16_t turning_direction; 
+    int16_t turning_direction = 0; 
+
+    bool order = true;
 
     while(1){
         
@@ -356,16 +358,26 @@ static THD_FUNCTION(ControlRobot, arg) {
         //100Hz
          else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
 
-            turning_direction = get_freq();
-        
-            if(turning_direction == 1){ //ordre de tourner à gauche
-                
-                check_before_turning_left();
+            if (turning_direction == get_freq()){ 
+                order = false 
+            }
+            else { 
+                order = true
+                turning_direction = get_freq();
             } 
-            
-            if(turning_direction == 2){ // ordre de touner à droite
+        
+            if (order == 1) {
 
-                check_before_turning_right();
+                if(turning_direction == 1){ //ordre de tourner à gauche
+                    
+                    check_before_turning_left();
+                } 
+                
+                if(turning_direction == 2){ // ordre de touner à droite
+
+                    check_before_turning_right();
+                }
+                order = false;
             }
 
         }
