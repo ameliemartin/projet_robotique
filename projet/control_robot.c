@@ -330,7 +330,51 @@ static THD_FUNCTION(ControlRobot, arg) {
         	}
         }
         //100Hz
+         else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
 
+            turning_direction = get_freq();
+        
+            if(turning_direction == 1){ //ordre de tourner à gauche
+                    
+                    // attend que rien a gauche avant de tourner
+                     while(get_prox(4) > 60 && get_prox(5) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ 
+                        //continue tout droit 
+                        right_motor_set_speed(600);
+                        left_motor_set_speed(600); 
+                        chThdSleepMilliseconds(10); 
+
+                     }
+                     if (get_prox(0) > 150  || get_prox(7) > 150){} // si rencontre un objet en face-> sort "le chien reprend le control"
+                    
+                    else { // si rien en face et rien à gauche -> tourne à gauche
+                        
+                        chThdSleepMilliseconds(300); //à ajuster: si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+                        
+                        //réalise l'action 
+                       quarter_turn_left(); 
+                    }
+            } 
+            
+            if(turning_direction == 2){ // ordre de tourner à droite
+
+                    // verifie qu'il n'y a rien sur la droite sinon continue tout droit
+                    while(get_prox(2) > 60 && get_prox(3) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //valeurs trouvées avec essais 
+                        //continue tout droit 
+                        right_motor_set_speed(600);
+                        left_motor_set_speed(600); 
+                        chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures      
+                    }
+
+                    if (get_prox(0) > 150  || get_prox(7) > 150){}// si rencontre un objet en face -> sort de la boucle
+                         
+                    else {
+                        chThdSleepMilliseconds(300); //à ajuster: si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+                        
+                       quarter_turn_right(); // réalise l'action 
+                    } 
+            }
+
+        }
 
     
         chThdSleepUntilWindowed(time, time + MS2ST(10));
