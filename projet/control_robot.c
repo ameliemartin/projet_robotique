@@ -359,10 +359,10 @@ static THD_FUNCTION(ControlRobot, arg) {
          else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
 
             if (turning_direction == get_freq()){ 
-                order = false 
+                order = false;
             }
             else { 
-                order = true
+                order = true;
                 turning_direction = get_freq();
             } 
         
