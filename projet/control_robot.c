@@ -53,13 +53,13 @@ void half_turn(void){
 }
 void check_before_turning_left(void){
 
-    while(/*get_prox(4) > 60 &&*/ get_prox(5) > 60 && get_prox(0) < 150 && get_prox(7) < 150){ //valeurs trouvées avec essais 
+    while(/*get_prox(REAR_LEFT_SENSOR) > 60 &&*/ get_prox(LEFT_SENSOR) > 60 && get_prox(FRONT_RIGHT_SENSOR) < 150 && get_prox(FRONT_LEFT_SENSOR) < 150){ //valeurs trouvées avec essais 
         //continue tout droit 
         straight_ahead(); 
         chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures      
      }
 
-    if (get_prox(0) > 150  || get_prox(7) > 150){} // si rencontre un objet en face-> sort
+    if (get_prox(FRONT_RIGHT_SENSOR) > 150  || get_prox(FRONT_LEFT_SENSOR) > 150){} // si rencontre un objet en face-> sort
     else {
                         
         chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
@@ -68,14 +68,14 @@ void check_before_turning_left(void){
 
 }
 void check_before_turning_right(void){
-    while(get_prox(2) > 60 && /*get_prox(3) > 60 && */get_prox(0) < 150 && get_prox(7) < 150){ //valeurs trouvées avec essais 
+    while(get_prox(RIGHT_SENSOR) > 60 && /*get_prox(REAR_RIGHT_SENSOR) > 60 && */get_prox(FRONT_RIGHT_SENSOR) < 150 && get_prox(FRONT_LEFT_SENSOR) < 150){ //valeurs trouvées avec essais 
     //continue tout droit 
     straight_ahead();
     chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
                             
     }
 
-    if (get_prox(0) > 150  || get_prox(7) > 150){} // si rencontre un objet en face -> sort de la boucle
+    if (get_prox(FRONT_RIGHT_SENSOR) > 150  || get_prox(FRONT_LEFT_SENSOR) > 150){} // si rencontre un objet en face -> sort de la boucle
     else {
         
         chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
@@ -96,8 +96,7 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
     }
     else {
         quarter_turn_right();
-    } 
-    chprintf((BaseSequentialStream *)&SD3, "premier quart de tour \n");
+    }
 
     while(get_prox(rear_sensor) > 60 && get_prox(side_sensor) > 60 && get_prox(FRONT_RIGHT_SENSOR) < 150 && get_prox(FRONT_LEFT_SENSOR) < 150){
         //continue tout droit 
@@ -121,7 +120,6 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
         else {
             quarter_turn_left();
         }
-        chprintf((BaseSequentialStream *)&SD3, "deuxieme quart de tour \n");
                        
         // on le force à repartir tout droit 
 // D1
@@ -149,9 +147,7 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
             else {
                 quarter_turn_left();    
             }
-            chprintf((BaseSequentialStream *)&SD3, "troixieme quart de tour \n");
-            
-                            
+                           
             time = chVTGetSystemTime();
             time_test = chVTGetSystemTime();
             diff_time = time_stop - time_start; 
@@ -174,7 +170,6 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
                 else{
                     quarter_turn_right();    
                 }
-                chprintf((BaseSequentialStream *)&SD3, "quatrieme quart de tour \n");
             }
         } 
     } 
@@ -248,24 +243,20 @@ static THD_FUNCTION(ControlRobot, arg) {
             }
             
         }
-        else if (get_prox(0) > 150 || get_prox(1) > 230 || get_prox(6) > 230 || get_prox(7) > 150 ) // à ajuster et à mesurer après
+        else if (get_prox(FRONT_RIGHT_SENSOR) > 150 || get_prox(FRONT_RIGHT_45_SENSOR) > 230 || get_prox(FRONT_LEFT_45_SENSOR) > 230 || get_prox(FRONT_LEFT_SENSOR) > 150 ) // à ajuster et à mesurer après
         {
             chprintf((BaseSequentialStream *)&SD3, "cas 2 \n");
-            chprintf((BaseSequentialStream *)&SD3, "quelque chose en face \n");
-
             //contournement d'un objet: si il detecte un objet devant lui mais pas sur les côtés : va contourner l'obstacle
-        	if(get_prox(2) <= 70 && get_prox(5) <= 70 )
+        	if(get_prox(RIGHT_SENSOR) <= 70 && get_prox(LEFT_SENSOR) <= 70 )
             {
                 chprintf((BaseSequentialStream *)&SD3, "rien sur les cotes \n");
 
                 turning_direction = get_freq(); 
 // Dans ces boucles, critères de la fréquence à adapter plus tard  
                 if(turning_direction == 1){ //contournement par la gauche de l'obstacle  
-                    chprintf((BaseSequentialStream *)&SD3, "je vais à gauche \n");
                     left_turn_around(); 
                 }
-                else if (turning_direction == 2){ //contournement par la droite de l'obstacle 
-                    chprintf((BaseSequentialStream *)&SD3, "je vais à droite \n");   
+                else if (turning_direction == 2){ //contournement par la droite de l'obstacle   
                     right_turn_around();
                 }
                 else { // si pas de fréquence ou pas dans les gammes de fréquence, on attend qu'on nous en donne une
@@ -276,12 +267,12 @@ static THD_FUNCTION(ControlRobot, arg) {
                 }	
         	}
         	// quart de tour vers la gauche comme objet à droite
-        	else if (get_prox(2) > 70 && get_prox(5) <= 70){
+        	else if (get_prox(RIGHT_SENSOR) > 70 && get_prox(LEFT_SENSOR) <= 70){
                 chprintf((BaseSequentialStream *)&SD3, "objet sur la droite \n");
         		quarter_turn_left();
         	}
         	// quart de tour vers la droite quand objet à gauche
-            else if (get_prox(5) > 70 && get_prox(2) <= 70){
+            else if (get_prox(LEFT_SENSOR) > 70 && get_prox(RIGHT_SENSOR) <= 70){
                 chprintf((BaseSequentialStream *)&SD3, "objet sur la gauche \n");
                 quarter_turn_right();
         	}
