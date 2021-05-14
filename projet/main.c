@@ -18,10 +18,11 @@
 
 
 #include <control_robot.h>
+#include <audio_processing.h>
 #include <sensors/proximity.h>
 #include <spi_comm.h>
 #include <audio/microphone.h>
-#include <audio_processing.h>
+#include <process_image.h>
 
 
 // pour utilisation des fichiers proxi
@@ -88,10 +89,13 @@ int main(void)
 	// starts the IR proximity captors 
 	proximity_start();
 
+    dcmi_start();
+    po8030_start();
+
 	//stars the threads for the pi regulator and the processing of the image
 	//pi_regulator_start();
 	control_robot_start(); 
-	//process_image_start(); //ça on met en commentaire
+	process_image_start(); 
 
 	mic_start(&processAudioData);
 

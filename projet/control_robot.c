@@ -9,15 +9,15 @@
 #include <motors.h>
 #include <audio_processing.h>
 #include <control_robot.h>
-//#include <process_image.h>
+#include <process_image.h>
 #include <sensors/proximity.h>
 
 
 
 //Functions allowing the robot to rotate during the simulation
 void straight_ahead(void){
-    right_motor_set_speed(600);
-    left_motor_set_speed(600); 
+    right_motor_set_speed(300);
+    left_motor_set_speed(300); 
 }
 void robot_stop(void){
     right_motor_set_speed(0);
@@ -84,6 +84,7 @@ static THD_FUNCTION(ControlRobot, arg) {
 
     systime_t time, time_start, time_stop, time_test;
     uint32_t diff_time; 
+    uint16_t lineWidth = 0;
 
    // int diff_prox_left, diff_prox_right; // pour l'alignement
     //float distance_cm;
@@ -92,11 +93,12 @@ static THD_FUNCTION(ControlRobot, arg) {
     bool order = true;
 
     while(1){
+        chprintf((BaseSequentialStream *)&SD3, "debut du while  \n");
         
         time = chVTGetSystemTime();
         
     	straight_ahead();
-
+        lineWidth = get_width();
         
         //chprintf((BaseSequentialStream *)&SD3, "capteur avant droit - 45  = %d\n", get_prox(1));
         //chprintf((BaseSequentialStream *)&SD3, "capteur avant droit = %d\n", get_prox(0));
@@ -109,8 +111,14 @@ static THD_FUNCTION(ControlRobot, arg) {
         // IR4 (back-left) + IR5 (left) + IR6 (front-left-45deg) + IR7 (front-left)
 
         //s'il detecte qque chose devant lui
-        if (get_prox(0) > 150 || get_prox(1) > 230 || get_prox(6) > 230 || get_prox(7) > 150 ) // à ajuster et à mesurer après
+         chprintf((BaseSequentialStream *)&SD3, "lineWidthdth 1 %d \n ", lineWidth);
+        if (lineWidth > 200 ){
+            chprintf((BaseSequentialStream *)&SD3, "cas 1 \n");
+            robot_stop();
+        }
+        else if (get_prox(0) > 150 || get_prox(1) > 230 || get_prox(6) > 230 || get_prox(7) > 150 ) // à ajuster et à mesurer après
         {
+            chprintf((BaseSequentialStream *)&SD3, "cas 2 \n");
             chprintf((BaseSequentialStream *)&SD3, "quelque chose en face \n");
 
             //contournement d'un objet: si il detecte un objet devant lui mais pas sur les côtés : va contourner l'obstacle
@@ -357,7 +365,7 @@ static THD_FUNCTION(ControlRobot, arg) {
         }
         //100Hz
          else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
-
+            chprintf((BaseSequentialStream *)&SD3, "cas 3 \n");
             if (turning_direction == get_freq()){ 
                 order = false;
             }
@@ -381,8 +389,6 @@ static THD_FUNCTION(ControlRobot, arg) {
             }
 
         }
-
-    
         chThdSleepUntilWindowed(time, time + MS2ST(10));
     }
 }

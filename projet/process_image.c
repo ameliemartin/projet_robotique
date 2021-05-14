@@ -11,9 +11,17 @@
 
 static float distance_cm = 0;
 static uint16_t line_position = IMAGE_BUFFER_SIZE/2;	//middle
+static uint16_t lineWidth = 0;
 
 //semaphore
 static BSEMAPHORE_DECL(image_ready_sem, TRUE);
+
+
+uint16_t get_width(void){
+
+	return lineWidth;
+}
+
 
 /*
  *  Returns the line's width extracted from the image buffer given
@@ -106,7 +114,7 @@ static THD_FUNCTION(CaptureImage, arg) {
     (void)arg;
 
 	//Takes pixels 0 to IMAGE_BUFFER_SIZE of the line 10 + 11 (minimum 2 lines because reasons)
-	po8030_advanced_config(FORMAT_RGB565, 0, 10, IMAGE_BUFFER_SIZE, 2, SUBSAMPLING_X1, SUBSAMPLING_X1);
+	po8030_advanced_config(FORMAT_RGB565, 0, 460, IMAGE_BUFFER_SIZE, 2, SUBSAMPLING_X1, SUBSAMPLING_X1);
 	dcmi_enable_double_buffering();
 	dcmi_set_capture_mode(CAPTURE_ONE_SHOT);
 	dcmi_prepare();
@@ -130,7 +138,7 @@ static THD_FUNCTION(ProcessImage, arg) {
 
 	uint8_t *img_buff_ptr;
 	uint8_t image[IMAGE_BUFFER_SIZE] = {0};
-	uint16_t lineWidth = 0;
+	//uint16_t lineWidth = 0;
 
 	bool send_to_computer = true;
 
@@ -150,10 +158,6 @@ static THD_FUNCTION(ProcessImage, arg) {
 		//search for a line in the image and gets its width in pixels
 		lineWidth = extract_line_width(image);
 
-		//converts the width into a distance between the robot and the camera
-		if(lineWidth){
-			distance_cm = PXTOCM/lineWidth;
-		}
 
 		if(send_to_computer){
 			//sends to the computer the image
@@ -164,13 +168,7 @@ static THD_FUNCTION(ProcessImage, arg) {
     }
 }
 
-float get_distance_cm(void){
-	return distance_cm;
-}
 
-uint16_t get_line_position(void){
-	return line_position;
-}
 
 void process_image_start(void){
 	chThdCreateStatic(waProcessImage, sizeof(waProcessImage), NORMALPRIO, ProcessImage, NULL);
