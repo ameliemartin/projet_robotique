@@ -12,6 +12,10 @@
 #include <process_image.h>
 #include <sensors/proximity.h>
 
+#include <audio/play_melody.h>
+//#include <audio/audio_thread.h>
+
+
 // sensors define
 #define FRONT_RIGHT_SENSOR      0
 #define FRONT_RIGHT_45_SENSOR   1
@@ -209,7 +213,10 @@ void right_turn_around(void){
     chprintf((BaseSequentialStream *)&SD3, "contournement droite \n");
     turn_around(false, LEFT_SENSOR, REAR_LEFT_SENSOR);  //1er argument dans turn around : true aller à gauche, false aller à droite 
 }
-
+void bark(void){
+    playNote(NOTE_CS4,400);
+    playNote(NOTE_G4,200);
+}
 
 
 static THD_WORKING_AREA(waControlRobot, 256);
@@ -256,6 +263,7 @@ static THD_FUNCTION(ControlRobot, arg) {
 
             if(cross == false){
                 robot_stop();
+                bark();
                 while (get_freq() != MOVE_FORWARD)
                 {}
                 time_crossed = chVTGetSystemTime() + MS2ST(10000); //duree de traversée du passage piéton à determiner en fonction de la vitesse

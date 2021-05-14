@@ -89,6 +89,10 @@ int main(void)
 	// starts the IR proximity captors 
 	proximity_start();
 
+     //pour le son
+    dac_start();
+    //playMelodyStart();
+    
     dcmi_start();
     po8030_start();
 
