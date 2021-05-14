@@ -8,8 +8,6 @@
 
 #include <process_image.h>
 
-
-static float distance_cm = 0;
 static uint16_t line_position = IMAGE_BUFFER_SIZE/2;	//middle
 static uint16_t lineWidth = 0;
 
@@ -17,9 +15,12 @@ static uint16_t lineWidth = 0;
 static BSEMAPHORE_DECL(image_ready_sem, TRUE);
 
 
-uint16_t get_width(void){
-
-	return lineWidth;
+bool crosswalk(void){
+	bool crosswalk = false; 
+	if(lineWidth > 150) { //rajouter un define
+		crosswalk = true;
+	}
+	return crosswalk;
 }
 
 

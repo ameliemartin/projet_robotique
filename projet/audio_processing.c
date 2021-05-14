@@ -45,6 +45,11 @@ static float micBack_output[FFT_SIZE];
 //#define FREQ_BACKWARD_L		(FREQ_BACKWARD-1)
 //#define FREQ_BACKWARD_H		(FREQ_BACKWARD+1)
 
+#define DONT_TURN               0
+#define TURN_LEFT               1
+#define TURN_RIGHT              2
+#define MOVE_FORWARD            3
+
 
 /*
 *	Simple function used to send the frequency to the control_robot
@@ -63,7 +68,7 @@ int16_t get_freq (void){
 int16_t sound_remote(float* data){
 	float max_norm = MIN_VALUE_THRESHOLD;
 	int16_t max_norm_index = -1;
-	int16_t turning_direction = 0; 
+	int8_t turning_direction = 0; 
 
 	systime_t time_begin;
 	systime_t time_end;
@@ -81,19 +86,19 @@ int16_t sound_remote(float* data){
 	//turn left
 	if(max_norm_index >= FREQ_LEFT_L && max_norm_index <= FREQ_LEFT_H){
 
-		turning_direction = 1; 
+		turning_direction = TURN_LEFT; 
 	}
 	//turn right
 	else if(max_norm_index >= FREQ_RIGHT_L && max_norm_index <= FREQ_RIGHT_H){
 		
-		turning_direction = 2; 		
+		turning_direction = TURN_RIGHT; 		
 	}
 	else if(max_norm_index >= FREQ_FORWARD_L && max_norm_index <= FREQ_FORWARD_H){
 		
-		turning_direction = 3; 		
+		turning_direction = MOVE_FORWARD; 		
 	}
 	else{
-		turning_direction = 0;	
+		turning_direction = DONT_TURN;	
 	}
 
 	return turning_direction; 
@@ -118,7 +123,7 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 	*	1024 samples, then we compute the FFTs.
 	*
 	*/
-	int16_t turning_direction = 0; 
+	int8_t turning_direction = 0; 
 	static uint16_t nb_samples = 0;
 		static uint8_t mustSend = 0;
 
