@@ -31,12 +31,13 @@ static float micBack_output[FFT_SIZE];
 //#define FREQ_FORWARD		16	//250Hz
 #define FREQ_LEFT			16	//250 on peut changer ça après, valeur du chiffre à peu près x15,6 
 #define FREQ_RIGHT			26	//406Hz 
+#define FREQ_FORWARD 		20 // 312Hz
 //#define FREQ_BACKWARD		26	//406Hz
 #define MAX_FREQ			30	//we don't analyze after this index to not use resources for nothing
 
 
-//#define FREQ_FORWARD_L		(FREQ_FORWARD-1)
-//#define FREQ_FORWARD_H		(FREQ_FORWARD+1)
+#define FREQ_FORWARD_L		(FREQ_FORWARD-1)
+#define FREQ_FORWARD_H		(FREQ_FORWARD+1)
 #define FREQ_LEFT_L			(FREQ_LEFT-1)
 #define FREQ_LEFT_H			(FREQ_LEFT+1)
 #define FREQ_RIGHT_L		(FREQ_RIGHT-1)
@@ -86,6 +87,10 @@ int16_t sound_remote(float* data){
 	else if(max_norm_index >= FREQ_RIGHT_L && max_norm_index <= FREQ_RIGHT_H){
 		
 		turning_direction = 2; 		
+	}
+	else if(max_norm_index >= FREQ_FORWARD_L && max_norm_index <= FREQ_FORWARD_H){
+		
+		turning_direction = 3; 		
 	}
 	else{
 		turning_direction = 0;	

@@ -82,7 +82,7 @@ static THD_FUNCTION(ControlRobot, arg) {
     chRegSetThreadName(__FUNCTION__);
     (void)arg;
 
-    systime_t time, time_start, time_stop, time_test;
+    systime_t time, time_start, time_stop, time_test, time_crossed;
     uint32_t diff_time; 
     uint16_t lineWidth = 0;
 
@@ -91,6 +91,7 @@ static THD_FUNCTION(ControlRobot, arg) {
     int16_t turning_direction = 0; 
 
     bool order = true;
+    bool cross = false; 
 
     while(1){
         chprintf((BaseSequentialStream *)&SD3, "debut du while  \n");
@@ -112,9 +113,24 @@ static THD_FUNCTION(ControlRobot, arg) {
 
         //s'il detecte qque chose devant lui
          chprintf((BaseSequentialStream *)&SD3, "lineWidthdth 1 %d \n ", lineWidth);
-        if (lineWidth > 200 ){
+        if (lineWidth > 150 || cross == true ){
             chprintf((BaseSequentialStream *)&SD3, "cas 1 \n");
-            robot_stop();
+
+            if(cross == false){
+                robot_stop();
+                while (get_freq() != 3)
+                {}
+                cross = true; 
+                time_crossed = chVTGetSystemTime() + MS2ST(10000); //duree de traversée du passage piéton à determiner en fonction de la vitesse 
+                straight_ahead(); 
+            }
+            else {
+                if(chVTGetSystemTime() > time_crossed )
+                {
+                    cross = false; 
+                }
+            }
+            
         }
         else if (get_prox(0) > 150 || get_prox(1) > 230 || get_prox(6) > 230 || get_prox(7) > 150 ) // à ajuster et à mesurer après
         {
@@ -366,15 +382,15 @@ static THD_FUNCTION(ControlRobot, arg) {
         //100Hz
          else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
             chprintf((BaseSequentialStream *)&SD3, "cas 3 \n");
-            if (turning_direction == get_freq()){ 
+            if (turning_direction == get_freq() && cross ==false){ 
                 order = false;
             }
-            else { 
+            else if (cross == false ) { 
                 order = true;
                 turning_direction = get_freq();
             } 
         
-            if (order == 1) {
+            if (order == 1 && cross == false) {
 
                 if(turning_direction == 1){ //ordre de tourner à gauche
                     
