@@ -257,7 +257,6 @@ static THD_FUNCTION(ControlRobot, arg) {
         // IR4 (back-left) + IR5 (left) + IR6 (front-left-45deg) + IR7 (front-left)
 
         //s'il detecte qque chose devant lui
-         chprintf((BaseSequentialStream *)&SD3, "lineWidth  %d \n ", lineWidth);
         if (crosswalk()){
             chprintf((BaseSequentialStream *)&SD3, "cas 1 \n");
 

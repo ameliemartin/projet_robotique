@@ -54,18 +54,15 @@ static float micBack_output[FFT_SIZE];
 /*
 *	Simple function used to send the frequency to the control_robot
 */
-int16_t get_freq (void){
-
-	int16_t turning_direction ; 
-	turning_direction = sound_remote(micLeft_output); // voir le son est géré par ça. 
-	return turning_direction ; 
+int8_t get_freq (void){
+	return sound_remote(micLeft_output);
 }
 
 /*
 *	Simple function used to detect the highest value in a buffer
 *	and to execute a motor command depending on it
 */
-int16_t sound_remote(float* data){
+int8_t sound_remote(float* data){
 	float max_norm = MIN_VALUE_THRESHOLD;
 	int16_t max_norm_index = -1;
 	int8_t turning_direction = 0; 
