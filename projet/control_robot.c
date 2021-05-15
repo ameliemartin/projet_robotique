@@ -64,7 +64,8 @@
 
 
 static systime_t time_crossed; 
-static bool cross; 
+static bool cross = false; 
+static int8_t turning_direction = 0;
 
 /*
  *  Function allowing the robot to move straight ahead 
@@ -281,8 +282,6 @@ void crosswalk (void){
  */
 uint8_t get_mode (void){
     // variables de la fonction : 
-    int8_t turning_direction = 0;
-    bool order = true; 
 
     chprintf((BaseSequentialStream *)&SD3, "capteur de droite : %d \n", get_prox(2)); 
     chprintf((BaseSequentialStream *)&SD3, "capteur de gauche : %d \n", get_prox(5)); 
@@ -338,16 +337,10 @@ uint8_t get_mode (void){
     }
     else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
         chprintf((BaseSequentialStream *)&SD3, "cas 3 \n");
-        if (turning_direction == get_freq() && cross ==false){ 
-            order = false;
+        if (turning_direction == get_freq() || cross == true){
         }
-        else if (cross == false ) { 
-            order = true;
+        if (turning_direction != get_freq() && cross == false) { 
             turning_direction = get_freq();
-        } 
-        
-        if (order == true && cross == false) {
-
             if(turning_direction == TURN_LEFT){ //ordre de tourner à gauche
                 chprintf((BaseSequentialStream *)&SD3, "ordre de tourner à gauche \n"); 
                 return CHECK_BEFORE_TURNING_LEFT; //check_before_turning_left();
@@ -356,8 +349,7 @@ uint8_t get_mode (void){
                 chprintf((BaseSequentialStream *)&SD3, "ordre de tourner à droite \n"); 
                 return CHECK_BEFORE_TURNING_RIGHT; //check_before_turning_right();
             }
-            order = false;
-        }
+        } 
     }
     return NO_INSTRUCTION;
 }
@@ -387,7 +379,7 @@ static THD_FUNCTION(ControlRobot, arg) {
         
         straight_ahead();
 
-        if (crosswalk_detected() && chVTGetSystemTime() > time_crossed){
+        if (chVTGetSystemTime() > time_crossed){
             cross = false; 
         }
         
