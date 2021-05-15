@@ -1,3 +1,10 @@
+/*
+File : main.h
+Author : Amelie Martin  & Carla Paillardon
+Date : 16 may 2021
+
+Initialize the different modules and starts the threads
+*/
 #ifndef MAIN_H
 #define MAIN_H
 
@@ -14,15 +21,18 @@ extern "C" {
 #define IMAGE_BUFFER_SIZE		640
 #define WIDTH_SLOPE				20
 #define MIN_LINE_WIDTH			40
+
+
+// A SUPPRIMER
+#define KP						800.0f
+#define KI 						3.5f	//must not be zero
+#define MAX_SUM_ERROR 			(MOTOR_SPEED_LIMIT/KI)
 #define ROTATION_THRESHOLD		10
 #define ROTATION_COEFF			2 
 #define PXTOCM					1570.0f //experimental value
 #define GOAL_DISTANCE 			7.0f //remplacer 10 par 7 pour voir ?
 #define MAX_DISTANCE 			25.0f
 #define ERROR_THRESHOLD			0.1f	//[cm] because of the noise of the camera
-#define KP						800.0f
-#define KI 						3.5f	//must not be zero
-#define MAX_SUM_ERROR 			(MOTOR_SPEED_LIMIT/KI)
 
 /** Robot wide IPC bus. */
 extern messagebus_t bus;

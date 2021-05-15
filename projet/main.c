@@ -1,3 +1,10 @@
+/*
+File : main.c
+Author : Amelie Martin  & Carla Paillardon
+Date : 16 may 2021
+
+Initialize the different modules and starts the threads
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +31,6 @@
 #include <audio/microphone.h>
 #include <process_image.h>
 
-
 // pour utilisation des fichiers proxi
 messagebus_t bus;
 MUTEX_DECL(bus_lock);
@@ -49,25 +55,6 @@ static void serial_start(void)
 	sdStart(&SD3, &ser_cfg); // UART3.
 }
 
-// ajout du TP 5 de ça 
-/*static void timer12_start(void){
-    //General Purpose Timer configuration   
-    //timer 12 is a 16 bit timer so we can measure time
-    //to about 65ms with a 1Mhz counter
-    static const GPTConfig gpt12cfg = {
-        1000000,        //1MHz timer clock in order to measure uS.
-        NULL,           //Timer callback.
-        0,
-        0
-    };
-
-    gptStart(&GPTD12, &gpt12cfg);
-    //let the timer count to max value
-    gptStartContinuous(&GPTD12, 0xFFFF);
-}*/
-
-
-
 int main(void)
 {
 
@@ -75,34 +62,39 @@ int main(void)
     chSysInit();
     mpu_init();
 
+// COMMUNICATION
+
     //initialize  the inter process communication bus
      messagebus_init(&bus, &bus_lock, &bus_condvar);
 
-    //starts the serial communication
+    //Starts the serial and the USB communications
     serial_start();
-    //start the USB communication
     usb_start();
-    
-	//inits the motors
+
+// MOTORS
+
+	//Initialize the control of the motors
 	motors_init();
 
-	// starts the IR proximity captors 
+// SENSORS
+	// Starts the IR proximity sensors 
 	proximity_start();
 
-     //pour le son
-	//dac_power_speaker(true);
+// AUDIO
+	// Powers ON the audio amplifier and DAC peripheral
     dac_start();
-    //playMelodyStart();
-    
-    dcmi_start();
+    // Starts the microphones acquisition
+    mic_start(&processAudioData);
+
+// CAMERA
+    // Starts the camera
+    dcmi_start(); 
     po8030_start();
 
-	//stars the threads for the pi regulator and the processing of the image
-	//pi_regulator_start();
+//THREADS
+	//Starts the threads for the control of the robot and the processing of the image
 	control_robot_start(); 
 	process_image_start(); 
-
-	mic_start(&processAudioData);
 
 
     /* Infinite loop. */
