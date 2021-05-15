@@ -53,16 +53,16 @@ static float micBack_output[FFT_SIZE];
 
 
 /*
-*	Simple function used to send the frequency to control_robot 
+ *	Simple function used to send the frequency to control_robot 
 */
 int8_t get_freq (void){
 	return sound_remote(micLeft_output);
 }
 
 /*
-*	Simple function used to detect the highest value in a buffer
-*	and to determine the movement of the robot depending on it
-*/
+ *	Simple function used to detect the highest value in a buffer
+ *	and to determine the movement of the robot depending on it
+ */
 int8_t sound_remote(float* data){
 	float max_norm = MIN_VALUE_THRESHOLD;
 	int16_t max_norm_index = -1;
@@ -104,17 +104,17 @@ int8_t sound_remote(float* data){
 
 
 /*
-*	Callback called when the demodulation of the four microphones is done.
-*	We get 160 samples per mic every 10ms (16kHz)
-*	
-*	params :
-*	int16_t *data			Buffer containing 4 times 160 samples. the samples are sorted by micro
-*							so we have [micRight1, micLeft1, micBack1, micFront1, micRight2, etc...]
-*	uint16_t num_samples	Tells how many data we get in total (should always be 640)
-*/
+ *	Callback called when the demodulation of the four microphones is done.
+ *	We get 160 samples per mic every 10ms (16kHz)
+ *	
+ *	params :
+ *	int16_t *data			Buffer containing 4 times 160 samples. the samples are sorted by micro
+ *							so we have [micRight1, micLeft1, micBack1, micFront1, micRight2, etc...]
+ *	uint16_t num_samples	Tells how many data we get in total (should always be 640)
+ */
 void processAudioData(int16_t *data, uint16_t num_samples){
 
-	/*
+   /*
 	*
 	*	We get 160 samples per mic every 10ms
 	*	So we fill the samples buffers to reach
@@ -160,7 +160,7 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 			doFFT_optimized(FFT_SIZE, micFront_cmplx_input);
 			doFFT_optimized(FFT_SIZE, micBack_cmplx_input);
 
-			/*	Magnitude processing
+		   /*	Magnitude processing
 			*
 			*	Computes the magnitude of the complex numbers and
 			*	stores them in a buffer of FFT_SIZE because it only contains

@@ -1,3 +1,11 @@
+/*
+File : process_image.c
+Author : Amelie Martin  & Carla Paillardon
+Date : 16 may 2021
+
+Capture and analyse the image and returns a boolean to control_robot.c to determine if a crosswalk is detected by the camera
+*/
+
 #include "ch.h"
 #include "hal.h"
 #include <chprintf.h>
@@ -8,15 +16,23 @@
 
 #include <process_image.h>
 
-static uint16_t line_position = IMAGE_BUFFER_SIZE/2;	//middle
-static uint16_t lineWidth = 0;
+#define MIN_CROSSWALK_LINEWIDTH 150 // à ajuster
+
+// x and y coordinate of the upper left corner of the zone to capture from the sensor
+# define X1 0
+# define Y1 460
+
+static uint16_t line_position = IMAGE_BUFFER_SIZE/2; // middle
+static uint16_t lineWidth = 0; // initialization 
 
 //semaphore
 static BSEMAPHORE_DECL(image_ready_sem, TRUE);
 
-
+/*
+ *  Fucnction used to return a boolean to control_robot.c to determine if a crosswalk is detected by the camera
+*/
 bool crosswalk_detected(void){ 
-	if(lineWidth > 150) { //rajouter un define
+	if(lineWidth > MIN_CROSSWALK_LINEWIDTH) { 
 		return true;
 	}
 	else {
@@ -96,7 +112,8 @@ uint16_t extract_line_width(uint8_t *buffer){
 		begin = 0;
 		end = 0;
 		width = last_width;
-	}else{
+	}
+	else{
 		last_width = width = (end - begin);
 		line_position = (begin + end)/2; //gives the line position.
 	}
@@ -104,7 +121,8 @@ uint16_t extract_line_width(uint8_t *buffer){
 	//sets a maximum width or returns the measured width
 	if((PXTOCM/width) > MAX_DISTANCE){
 		return PXTOCM/MAX_DISTANCE;
-	}else{
+	}
+	else{
 		return width;
 	}
 }
@@ -114,9 +132,10 @@ static THD_FUNCTION(CaptureImage, arg) {
 
     chRegSetThreadName(__FUNCTION__);
     (void)arg;
+    
 
 	//Takes pixels 0 to IMAGE_BUFFER_SIZE of the line 10 + 11 (minimum 2 lines because reasons)
-	po8030_advanced_config(FORMAT_RGB565, 0, 460, IMAGE_BUFFER_SIZE, 2, SUBSAMPLING_X1, SUBSAMPLING_X1);
+	po8030_advanced_config(FORMAT_RGB565, X1, Y1, IMAGE_BUFFER_SIZE, 2, SUBSAMPLING_X1, SUBSAMPLING_X1);
 	dcmi_enable_double_buffering();
 	dcmi_set_capture_mode(CAPTURE_ONE_SHOT);
 	dcmi_prepare();
@@ -169,7 +188,6 @@ static THD_FUNCTION(ProcessImage, arg) {
 		send_to_computer = !send_to_computer;
     }
 }
-
 
 
 void process_image_start(void){
