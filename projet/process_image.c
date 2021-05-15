@@ -15,12 +15,13 @@ static uint16_t lineWidth = 0;
 static BSEMAPHORE_DECL(image_ready_sem, TRUE);
 
 
-bool crosswalk(void){
-	bool crosswalk = false; 
+bool crosswalk_detected(void){ 
 	if(lineWidth > 150) { //rajouter un define
-		crosswalk = true;
+		return true;
 	}
-	return crosswalk;
+	else {
+		return false;
+	}
 }
 
 
