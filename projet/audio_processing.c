@@ -1,3 +1,12 @@
+/*
+File : audio_processing.c
+Author : Amelie Martin  & Carla Paillardon
+Date : 16 may 2021
+
+Capture and analyse the frequency and returns the instructions to move the robot to "control_robot.c" 
+
+*/
+
 #include "ch.h"
 #include "hal.h"
 #include <main.h>
@@ -28,11 +37,9 @@ static float micBack_output[FFT_SIZE];
 #define MIN_VALUE_THRESHOLD	10000
 
 #define MIN_FREQ			10	//we don't analyze before this index to not use resources for nothing
-//#define FREQ_FORWARD		16	//250Hz
 #define FREQ_LEFT			16	//250 on peut changer ça après, valeur du chiffre à peu près x15,6 
 #define FREQ_RIGHT			26	//406Hz 
 #define FREQ_FORWARD 		20 // 312Hz
-//#define FREQ_BACKWARD		26	//406Hz
 #define MAX_FREQ			30	//we don't analyze after this index to not use resources for nothing
 
 
@@ -42,17 +49,11 @@ static float micBack_output[FFT_SIZE];
 #define FREQ_LEFT_H			(FREQ_LEFT+1)
 #define FREQ_RIGHT_L		(FREQ_RIGHT-1)
 #define FREQ_RIGHT_H		(FREQ_RIGHT+1)
-//#define FREQ_BACKWARD_L		(FREQ_BACKWARD-1)
-//#define FREQ_BACKWARD_H		(FREQ_BACKWARD+1)
 
-#define DONT_TURN               0
-#define TURN_LEFT               1
-#define TURN_RIGHT              2
-#define MOVE_FORWARD            3
 
 
 /*
-*	Simple function used to send the frequency to the control_robot
+*	Simple function used to send the frequency to control_robot 
 */
 int8_t get_freq (void){
 	return sound_remote(micLeft_output);
@@ -60,7 +61,7 @@ int8_t get_freq (void){
 
 /*
 *	Simple function used to detect the highest value in a buffer
-*	and to execute a motor command depending on it
+*	and to determine the movement of the robot depending on it
 */
 int8_t sound_remote(float* data){
 	float max_norm = MIN_VALUE_THRESHOLD;
@@ -181,7 +182,6 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 			nb_samples = 0;
 			mustSend++;
 
-			//rajout d'un bool ici ? 
 			turning_direction = sound_remote(micLeft_output);
 			
 		}

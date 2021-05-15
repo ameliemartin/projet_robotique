@@ -90,6 +90,7 @@ int main(void)
 	proximity_start();
 
      //pour le son
+	//dac_power_speaker(true);
     dac_start();
     //playMelodyStart();
     
