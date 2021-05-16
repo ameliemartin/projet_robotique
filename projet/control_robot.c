@@ -38,7 +38,7 @@
 /*
  *  Define used for the proximity threshold of the different sensors 
  */
-#define THRESHOLD_PROX_SIDE             70 // 120 torp loin
+#define THRESHOLD_PROX_SIDE             70 // 120 trop loin
 #define THRESHOLD_PROX_FRONT            190
 #define THRESHOLD_PROX_FRONT_45         230 //80 marche pas du tout 
 #define THRESHOLD_PROX_REAR             80
@@ -148,7 +148,7 @@ void check_before_turning_right(void){
 /*
  *  Function called when the robot wants to turn around an object to the left or to the right depending on the frequency 
  */
-void turn_around(bool direction, unsigned int side_sensor){ // direction 1 : gauche, 0 : droite 
+void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sensor){ // direction 1 : gauche, 0 : droite 
 
     systime_t time, time_start, time_stop, time_test;
     uint16_t diff_time; //on tente avec le 16 comme c'est une diff, si ca va pas, revenir au 32 ! 
@@ -166,7 +166,7 @@ void turn_around(bool direction, unsigned int side_sensor){ // direction 1 : gau
 
     time_start = chVTGetSystemTime(); 
 
-    while(get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){
+    while(/*get_prox(rear_sensor) > THRESHOLD_PROX_REAR && */get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){
         //continue tout droit 
         straight_ahead();
         chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures 
@@ -267,12 +267,12 @@ void turn_around(bool direction, unsigned int side_sensor){ // direction 1 : gau
 
 void left_turn_around(void){
     chprintf((BaseSequentialStream *)&SD3, "contournement gauche \n");
-    turn_around(true, RIGHT_SENSOR); //comme on tourne à gauche, on prend les capteurs de droite 
+    turn_around(true, RIGHT_SENSOR, REAR_RIGHT_SENSOR); //comme on tourne à gauche, on prend les capteurs de droite 
 }
 
 void right_turn_around(void){
     chprintf((BaseSequentialStream *)&SD3, "contournement droite \n");
-    turn_around(false, 5);  //1er argument dans turn around : true aller à gauche, false aller à droite 
+    turn_around(false, 5, 4);  //1er argument dans turn around : true aller à gauche, false aller à droite 
 }
 
 /*

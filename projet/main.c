@@ -16,7 +16,7 @@ Initialize the different modules and starts the threads
 #include <usbcfg.h>
 #include <main.h>
 #include <motors.h>
-//#include <camera/po8030.h>
+#include <camera/po8030.h>
 #include <chprintf.h>
 
 #include <fft.h>
@@ -29,6 +29,7 @@ Initialize the different modules and starts the threads
 #include <sensors/proximity.h>
 #include <spi_comm.h>
 #include <audio/microphone.h>
+#include <audio/audio_thread.h>
 #include <process_image.h>
 
 // pour utilisation des fichiers proxi
