@@ -377,7 +377,7 @@ uint8_t get_mode (void){
 }
 
 
-static THD_WORKING_AREA(waControlRobot, 512);
+static THD_WORKING_AREA(waControlRobot, 256);
 static THD_FUNCTION(ControlRobot, arg) {
 
     chRegSetThreadName(__FUNCTION__);
