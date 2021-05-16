@@ -68,8 +68,8 @@ int8_t sound_remote(float* data){
 	int16_t max_norm_index = -1;
 	int8_t turning_direction = 0; 
 
-	systime_t time_begin;
-	systime_t time_end;
+	//systime_t time_begin;
+	//systime_t time_end;
 	
 
 	//search for the highest peak

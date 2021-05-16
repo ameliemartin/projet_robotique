@@ -38,9 +38,10 @@
 /*
  *  Define used for the proximity threshold of the different sensors 
  */
-#define THRESHOLD_PROX_SIDE             70
-#define THRESHOLD_PROX_FRONT            150
-#define THRESHOLD_PROX_FRONT_45         230
+#define THRESHOLD_PROX_SIDE             70 // 120 torp loin
+#define THRESHOLD_PROX_FRONT            190
+#define THRESHOLD_PROX_FRONT_45         230 //80 marche pas du tout 
+#define THRESHOLD_PROX_REAR             80
 
 /*
  *  Define used for the different speeds of the robot
@@ -120,10 +121,10 @@ void check_before_turning_left(void){
         chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures      
      }
 
-    if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT){} // si rencontre un objet en face-> sort
+    if ((get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT) || (get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT)){} // si rencontre un objet en face-> sort
     else {
                         
-        chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+        chThdSleepMilliseconds(1400); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
         quarter_turn_left(); 
     }
 
@@ -139,7 +140,7 @@ void check_before_turning_right(void){
     if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT){} // si rencontre un objet en face -> sort de la boucle
     else {
         
-        chThdSleepMilliseconds(300); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+        chThdSleepMilliseconds(1400); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
         quarter_turn_right(); // a changer si premier quart de tour gauche
     }
 }
@@ -165,18 +166,24 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
 
     time_start = chVTGetSystemTime(); 
 
-    while(get_prox(rear_sensor) > THRESHOLD_PROX_SIDE && get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){
+    while(/*get_prox(rear_sensor) > THRESHOLD_PROX_REAR && */get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){
         //continue tout droit 
         straight_ahead();
         chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures 
     }
 
+    chprintf((BaseSequentialStream *)&SD3, "capteur cote : %d \n", get_prox(side_sensor)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
+        chprintf((BaseSequentialStream *)&SD3, " fin du while  \n");   
+
     if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){
-        chprintf((BaseSequentialStream *)&SD3, "j'ai vu qqchose \n");
+        chprintf((BaseSequentialStream *)&SD3, "j'ai vu qqchose entre 1 et 2  \n");
     }
     else {                  
         // sinon on continue  
-        //chThdSleepMilliseconds(300); //à voir si on rajoute pas ça / si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+        straight_ahead(); //par securite 
+        chThdSleepMilliseconds(1200); //à voir si on rajoute pas ça / si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
         time_stop = chVTGetSystemTime(); 
         diff_time = time_stop - time_start; 
                         
@@ -187,26 +194,36 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
         else {
             quarter_turn_left();
         }
-        chprintf((BaseSequentialStream *)&SD3, "deuxieme quart de tour \n");
-                       
+        chprintf((BaseSequentialStream *)&SD3, "deuxieme quart de tour \n"); 
         // on le force à repartir tout droit 
 // D1
         straight_ahead();
-        chThdSleepMilliseconds(900);
+        chThdSleepMilliseconds(1500);
+        chprintf((BaseSequentialStream *)&SD3, "j'ai dormi \n"); 
 
 // D2 tant qu'il y a quelque chose sur le coté, robot avance
-        while(get_prox(side_sensor) > THRESHOLD_PROX_SIDE /*&& get_prox(4) > THRESHOLD_PROX_SIDE*/ && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){ //tant qu'il capte sur les côtés et que rien devant 
+        while(get_prox(side_sensor) > 55 /*&& get_prox(4) > THRESHOLD_PROX_REAR*/ && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){ //tant qu'il capte sur les côtés et que rien devant 
             //continue tout droit 
             straight_ahead();
             chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures                     
         }
 
+        chprintf((BaseSequentialStream *)&SD3, "capteur cote : %d \n", get_prox(side_sensor)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
+        chprintf((BaseSequentialStream *)&SD3, " fin du while  \n");   
+
+
         if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
-                             
+            chprintf((BaseSequentialStream *)&SD3, "je sors parce que qqchose devant entre 2 et 3 \n"); 
+            chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
+        chprintf((BaseSequentialStream *)&SD3, " entre 2 et 3 \n");                            
         }
         else {
+            straight_ahead(); //par securite
             //pour etre sur d'être dégagé 
-            chThdSleepMilliseconds(300); 
+            chThdSleepMilliseconds(1000); 
 
 // E troixième quart de tour
             if(direction){
@@ -228,7 +245,10 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
                 //chprintf((BaseSequentialStream *)&SD3, "time test  = %d\n", time_test); 
             }
             if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
-                             
+                chprintf((BaseSequentialStream *)&SD3, "je sors parce que qqchose devant entre 3 et 4 \n"); 
+                chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
+                chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
+                chprintf((BaseSequentialStream *)&SD3, " entre 3 et 4 \n");                  
             }
             else{
 // G quatrieme quart de tour 
@@ -238,6 +258,7 @@ void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sen
                 else{
                     quarter_turn_right();    
                 }
+                straight_ahead();
                 chprintf((BaseSequentialStream *)&SD3, "quatrieme quart de tour \n");
             }
         } 
@@ -251,7 +272,7 @@ void left_turn_around(void){
 
 void right_turn_around(void){
     chprintf((BaseSequentialStream *)&SD3, "contournement droite \n");
-    turn_around(false, LEFT_SENSOR, REAR_LEFT_SENSOR);  //1er argument dans turn around : true aller à gauche, false aller à droite 
+    turn_around(false, 5, 4);  //1er argument dans turn around : true aller à gauche, false aller à droite 
 }
 
 /*
@@ -294,7 +315,7 @@ uint8_t get_mode (void){
             return CROSSWALK;
         }
     }
-    else if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT || get_prox(FRONT_RIGHT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT ) // à ajuster et à mesurer après
+    else if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT || get_prox(FRONT_RIGHT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT) // à ajuster et à mesurer après
     {
         chprintf((BaseSequentialStream *)&SD3, "objet en face \n");
         //contournement d'un objet: si il detecte un objet devant lui mais pas sur les côtés : va contourner l'obstacle
@@ -336,10 +357,11 @@ uint8_t get_mode (void){
         }
     }
     else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
-        chprintf((BaseSequentialStream *)&SD3, "cas 3 \n");
+        //chprintf((BaseSequentialStream *)&SD3, "cas 3 \n");
         if (turning_direction == get_freq() || cross == true){
         }
         if (turning_direction != get_freq() && cross == false) { 
+            chprintf((BaseSequentialStream *)&SD3, "j'ecoute un ordre \n"); 
             turning_direction = get_freq();
             if(turning_direction == TURN_LEFT){ //ordre de tourner à gauche
                 chprintf((BaseSequentialStream *)&SD3, "ordre de tourner à gauche \n"); 
@@ -355,7 +377,7 @@ uint8_t get_mode (void){
 }
 
 
-static THD_WORKING_AREA(waControlRobot, 256);
+static THD_WORKING_AREA(waControlRobot, 512);
 static THD_FUNCTION(ControlRobot, arg) {
 
     chRegSetThreadName(__FUNCTION__);
@@ -376,6 +398,15 @@ static THD_FUNCTION(ControlRobot, arg) {
         chprintf((BaseSequentialStream *)&SD3, "debut du while  \n");
         
         time = chVTGetSystemTime();
+
+        /*chprintf((BaseSequentialStream *)&SD3, "capteur de droite : %d \n", get_prox(2)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur de gauche : %d \n", get_prox(5)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite 45 : %d \n", get_prox(1)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche 45 : %d \n", get_prox(6));
+        chprintf((BaseSequentialStream *)&SD3, "capteur arriere droite : %d \n", get_prox(3)); 
+        chprintf((BaseSequentialStream *)&SD3, "capteur arrire gauche : %d \n", get_prox(4));*/
         
         straight_ahead();
 

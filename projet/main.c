@@ -94,7 +94,7 @@ int main(void)
 //THREADS
 	//Starts the threads for the control of the robot and the processing of the image
 	control_robot_start(); 
-	process_image_start(); 
+	process_image_start();
 
 
     /* Infinite loop. */

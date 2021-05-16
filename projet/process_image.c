@@ -16,7 +16,7 @@ Capture and analyse the image and returns a boolean to control_robot.c to determ
 
 #include <process_image.h>
 
-#define MIN_CROSSWALK_LINEWIDTH 150 // à ajuster
+#define MIN_CROSSWALK_LINEWIDTH 200 // à ajuster
 
 // x and y coordinate of the upper left corner of the zone to capture from the sensor
 # define X1 0
