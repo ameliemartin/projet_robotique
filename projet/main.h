@@ -1,6 +1,6 @@
 /*
 File : main.h
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
 Initialize the different modules and starts the threads

@@ -1,6 +1,6 @@
 /*
 File : audio_processing.h
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
 Capture and analyse the frequency and returns the instructions to move the robot to "control_robot.c" 

@@ -1,9 +1,9 @@
 /*
 File : main.c
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
-Initialize the different modules and starts the threads
+Initializes the different modules and starts the threads
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,6 @@ Initialize the different modules and starts the threads
 #include <main.h>
 #include <motors.h>
 #include <camera/po8030.h>
-#include <chprintf.h>
 
 #include <communications.h>
 #include <arm_math.h>
@@ -63,33 +62,34 @@ int main(void)
     chSysInit();
     mpu_init();
 
-// COMMUNICATION
+    // COMMUNICATION
     //initialize  the inter process communication bus
     messagebus_init(&bus, &bus_lock, &bus_condvar);
     //Starts the serial and the USB communications
     serial_start();
     usb_start();
 
-// MOTORS
+    // MOTORS
 	//Initialize the control of the motors
 	motors_init();
 
-// SENSORS
+    // SENSORS
 	// Starts the IR proximity sensors 
 	proximity_start();
+    calibrate_ir();
 
-// AUDIO
+    // AUDIO
 	// Powers ON the audio amplifier and DAC peripheral
     dac_start();
     // Starts the microphones acquisition
     mic_start(&processAudioData);
 
-// CAMERA
+    // CAMERA
     // Starts the camera
     dcmi_start(); 
     po8030_start();
 
-//THREADS
+    //THREADS
 	//Starts the threads for the control of the robot and the processing of the image
 	control_robot_start(); 
 	process_image_start();

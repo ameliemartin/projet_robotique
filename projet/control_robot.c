@@ -1,9 +1,9 @@
 /*
 File : control_robot.c
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
-Allows the robot to react to every stimulation it can get. 
+Controls the robot's reactions to every environment it can encounter. 
 */
 
 /*
@@ -13,7 +13,6 @@ Allows the robot to react to every stimulation it can get.
 #include "hal.h"
 #include <math.h>
 #include <usbcfg.h>
-#include <chprintf.h>
 
 #include <main.h>
 #include <motors.h>
@@ -50,7 +49,8 @@ Allows the robot to react to every stimulation it can get.
 #define REAR_LEFT_SENSOR                4
 
 /*
- *  Defines used for the proximity threshold of the different sensors 
+ *  Defines used for the proximity threshold of the different sensors.
+ *  These were determined by experience and can be adjusted.
  */
 #define THRESHOLD_PROX_SIDE             70 
 #define THRESHOLD_PROX_FRONT            190
@@ -67,7 +67,9 @@ Allows the robot to react to every stimulation it can get.
 #define ZERO_SPEED                      0
 
 /*
- *  Defines used for the security of the robot
+ *  Defines used for the security of the robot. 
+ * They represent the time the robot takes to pass an obstacle or to cross a crosswalk
+ * Theses were determined by experience
  */
 #define SAFELY_PASS_OBSTACLE            1000
 #define TIME_PASSING_CROSSWALK          10000
@@ -79,7 +81,7 @@ Allows the robot to react to every stimulation it can get.
 #define OFF                             0
 
 
-// Variables set as static as used in different functions in this file
+// Variables set as static as they are used in different functions in this file
 static systime_t time_crossed; 
 static bool cross = false; 
 static int8_t turning_direction = 0;
@@ -102,7 +104,7 @@ void robot_stop(void){
 }
 
 /*
- *  Functions allowing the robot to do a quarter turn to the left or to the right and turning off the leds.
+ *  Functions allowing the robot to do a quarter turn to the left or to the right and turning off the LEDs when it is done.
  */
 void quarter_turn_right(void){
 
@@ -122,7 +124,7 @@ void quarter_turn_left(void){
 }
 
 /*
- *  Function allowing the robot to do a half turn and turning off the leds.
+ *  Function allowing the robot to do a half turn and turning off the LEDs.
  */
 void half_turn(void){
     right_motor_set_speed(-TURNING_SPEED);
@@ -133,11 +135,11 @@ void half_turn(void){
 }
 
 /*
- *  Functions used following receiving an order to turn to the left or to the right. 
- *  They check that the space is clear before turning. If an obstacle is preventing the robot from turning, it waits to have passed it. 
+ *  Functions used after receiving an order to turn to the left or to the right. 
+ *  They check that the environment is clear before turning. If an obstacle is preventing the robot from turning, it waits to have passed it. 
  */
 void check_before_turning_left(void){
-    // while an obstacle is still preventing the robot to turn, it keeps going ahead
+    // while an obstacle is still preventing the robot to turn, it keeps going straight ahead
     while(get_prox(LEFT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT){ 
         straight_ahead(); 
         set_led(LED7, ON);       
@@ -168,13 +170,16 @@ void check_before_turning_right(void){ // same function but for turning to the r
 }
 
 /*
- *  Function called when the robot wants to turn around an object to the left or to the right depending on the order.
- *  It works in several steps, the first quarter turn, then move along the obstacle until it has passed it. Then turns again, pass the obstacle on its side. 
- *  Turns a third time, moves along the obstacle on its other side for the same duration as on the first side of the obstacle.
+ *  Function called when the robot wants to turn around an obstacle situated in front of it.
+ *  The robot will turn around the object from the left or from the right depending on the instruction given by the frequency.
+ *  It works in several steps; first quarter turn, then move along the front of obstacle until it has passed it. 
+ *  Then turns again (in the other direction) and pass the side of the obstacle.
+ *  Turns a third time to go behind the obstacle, moves along the obstacle for the same duration as on the front side of the obstacle.
  *  Then, turns a last time to realign with the path the robot was initally following. 
  */
 void turn_around(bool turn_left, unsigned int side_sensor){ 
-
+    // for a left turn around the boolean turn_left is true and the side_sensor involved is RIGHT_SENSOR
+    // for a right turn around the boolean turn_left is false and the side_sensor involved is LEFT_SENSOR
     systime_t time, time_start, time_stop, time_test; 
     uint16_t diff_time;  
 
@@ -199,7 +204,7 @@ void turn_around(bool turn_left, unsigned int side_sensor){
         straight_ahead(); 
         chThdSleepMilliseconds(SAFELY_PASS_OBSTACLE); 
         time_stop = chVTGetSystemTime();       
-        diff_time = time_stop - time_start; //measures the time the robot took to go along the obstacle
+        diff_time = time_stop - time_start; //measures the time the robot took to go along the front of the obstacle
                         
         if(turn_left){ // second quarter turn 
             quarter_turn_right();
@@ -232,7 +237,7 @@ void turn_around(bool turn_left, unsigned int side_sensor){
             time = chVTGetSystemTime();
             time_test = chVTGetSystemTime(); 
                             
-            // we move for the same amount of time
+            // we move for the same amount of time 
             while (time_test < (time + diff_time) && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){  
                 straight_ahead();
                 time_test = chVTGetSystemTime(); // we check time_test at each iteration
@@ -252,16 +257,6 @@ void turn_around(bool turn_left, unsigned int side_sensor){
         } 
     } 
 }
-/*
- *  Functions calling the function turn_around depending if the order is to go on the left or on the right. 
- */
-void left_turn_around(void){
-    turn_around(true, RIGHT_SENSOR); 
-}
-void right_turn_around(void){
-    turn_around(false, LEFT_SENSOR);  
-}
-
 
 /*
  *  Function allowing our robot to "bark" when stopping at a cross walk. 
@@ -287,22 +282,23 @@ void crosswalk (void){
 
 
 /*
- *  Function deciding in which case our robot is in, then sending it to the switch in our main thread to do the required actions. 
- *  It will first check for a crosswalk, as it is the most dangerous obstacle it can encounters. 
- *  Then, if none is ahead, the robot will use its different sensors to detect the presence of obstacles in front of it and on its sides, and then move accordingly. 
- *  Finally, if the road is clear and if there are no crosswalk, the robot will look for orders to turn, given by its master. 
+ *  Function analysing the environment to detect in which case our robot is.
+ *  The information is returned to the switch of the ControlRobot thread in order to do the required actions. 
+ *  First: check for a crosswalk, as it is the most dangerous obstacle it can encounter. 
+ *  If none is ahead: the robot will use its proximity sensors to detect obstacles around it and then move accordingly. 
+ *  If the road is clear (no obstacles and no crosswalk):the robot will look for orders to turn, given by the frequency. 
  */
 uint8_t get_mode (void){
     
     if (crosswalk_detected()){ 
-        if(cross == false){ // check if it is not already crossing a crosswalk
+        if(cross == false){ // check if the robot is not already crossing a crosswalk
             return CROSSWALK; 
         }
     }
     else if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT || get_prox(FRONT_RIGHT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT) 
     { //something is in front of the robot
     
-        if(get_prox(RIGHT_SENSOR) <= THRESHOLD_PROX_SIDE && get_prox(LEFT_SENSOR) <= THRESHOLD_PROX_SIDE ) // there is nothing on the sides
+        if(get_prox(RIGHT_SENSOR) <= THRESHOLD_PROX_SIDE && get_prox(LEFT_SENSOR) <= THRESHOLD_PROX_SIDE ) // there are no obstacles on the sides
         {
             set_front_led(ON);
             turning_direction = get_freq(); // gets the frequency of the order to know by which side to go around 
@@ -322,7 +318,7 @@ uint8_t get_mode (void){
         }
         // obstacles in front and on the right 
         else if (get_prox(RIGHT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(LEFT_SENSOR) <= THRESHOLD_PROX_SIDE){
-            set_front_led(ON); // lights the corresponding leds to signal it to other users 
+            set_front_led(ON); // lights on the corresponding leds to signal it to other users 
             set_led(LED3, ON);
             return OBSTACLE_ON_RIGHT; 
         }
@@ -341,9 +337,9 @@ uint8_t get_mode (void){
         }
     }
     else {
-        if (turning_direction == get_freq() || cross == true){ // check if there was a chancge in frequency and that it is not currently crossing a crosswalk at the moment 
+        if (turning_direction == get_freq() || cross == true){ // check if there was a change in frequency (new order)and that it is not currently crossing a crosswalk at the moment 
         }
-        if (turning_direction != get_freq() && cross == false) { // case of a new order 
+        if (turning_direction != get_freq() && cross == false) { //new order 
             turning_direction = get_freq(); 
 
             if(turning_direction == TURN_LEFT){ 
@@ -358,7 +354,7 @@ uint8_t get_mode (void){
 }
 
 /*
- *  Our main thread ControlRobot, allowing our robot to react accordingly to what comes in its way, with the help of a switch.
+ *  Our main thread ControlRobot, allowing our robot to react accordingly to what comes in its way, with a switch.
  */
 static THD_WORKING_AREA(waControlRobot, 512);
 static THD_FUNCTION(ControlRobot, arg) {
@@ -373,7 +369,7 @@ static THD_FUNCTION(ControlRobot, arg) {
         
         straight_ahead(); // we set the robot to move forward
 
-        if (chVTGetSystemTime() > time_crossed){ // if we are still on a crosswalk, the robot doesnt respond to orders 
+        if (chVTGetSystemTime() > time_crossed){ // if the robot is still on a crosswalk, it doesnt respond to orders 
             cross = false; 
         }
         
@@ -384,11 +380,11 @@ static THD_FUNCTION(ControlRobot, arg) {
                 break; 
 
             case GO_AROUND_OBSTACLE_VIA_LEFT: 
-            left_turn_around();
+            turn_around(true, RIGHT_SENSOR); // left turn around 
                 break; 
 
             case GO_AROUND_OBSTACLE_VIA_RIGHT: 
-            right_turn_around();
+           turn_around(false, LEFT_SENSOR);  // right turn around
                 break; 
 
             case OBSTACLE_ON_RIGHT: 
@@ -419,7 +415,7 @@ static THD_FUNCTION(ControlRobot, arg) {
 }
     
 /*
- *  Starts our thread ControlRobot in the main.c 
+ *  Starts the thread ControlRobot in the main.c 
  */
 void control_robot_start(void){
 	chThdCreateStatic(waControlRobot, sizeof(waControlRobot), NORMALPRIO, ControlRobot, NULL);

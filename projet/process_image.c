@@ -1,14 +1,13 @@
 /*
 File : process_image.c
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
-Capture and analyse the image and returns a boolean to control_robot.c to determine if a crosswalk is detected by the camera
+Capture and analyses the image then returns a boolean to control_robot.c to determine if a crosswalk is detected by the camera
 */
 
 #include "ch.h"
 #include "hal.h"
-#include <chprintf.h>
 #include <usbcfg.h>
 
 #include <main.h>
@@ -18,8 +17,8 @@ Capture and analyse the image and returns a boolean to control_robot.c to determ
 
 
 // x and y coordinates of the upper left corner of the zone to capture from the sensor
-#define X1 						0
-#define Y1 						460
+#define X1  0
+#define Y1 	460
 
 static uint16_t line_position = IMAGE_BUFFER_SIZE/2; // middle
 static uint16_t lineWidth = 0; // initialization 
@@ -33,7 +32,6 @@ static BSEMAPHORE_DECL(image_ready_sem, TRUE);
  *  Fucnction used to return a boolean to control_robot.c to determine if a crosswalk is detected by the camera
 */
 bool crosswalk_detected(void){
-	 chprintf((BaseSequentialStream *)&SD3, "width : %d \n", lineWidth);
 	if(lineWidth > MIN_CROSSWALK_LINEWIDTH) { 
 		return true;
 	}
@@ -67,8 +65,7 @@ uint16_t extract_line_width(uint8_t *buffer){
 		//search for a begin
 		while(stop == 0 && i < (IMAGE_BUFFER_SIZE - WIDTH_SLOPE))
 		{ 
-			//the slope must at least be WIDTH_SLOPE wide and is compared
-		    //to the mean of the image
+			//the slope must at least be WIDTH_SLOPE wide and is compared to the mean of the image
 		    if(buffer[i] > mean && buffer[i+WIDTH_SLOPE] < mean)
 		    {
 		        begin = i;
@@ -137,7 +134,7 @@ static THD_FUNCTION(CaptureImage, arg) {
     (void)arg;
     
 
-	//Takes pixels 0 to IMAGE_BUFFER_SIZE of the line 10 + 11 (minimum 2 lines because reasons)
+	//Takes pixels 0 to IMAGE_BUFFER_SIZE of the line 10 + 11 (minimum 2 lines)
 	po8030_advanced_config(FORMAT_RGB565, X1, Y1, IMAGE_BUFFER_SIZE, 2, SUBSAMPLING_X1, SUBSAMPLING_X1);
 	dcmi_enable_double_buffering();
 	dcmi_set_capture_mode(CAPTURE_ONE_SHOT);

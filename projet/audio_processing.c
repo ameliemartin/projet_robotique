@@ -1,9 +1,9 @@
 /*
 File : audio_processing.c
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
-Capture and analyse the frequency and returns the instructions to move the robot to "control_robot.c" 
+Analyse the frequency and returns the instructions to move the robot to "control_robot.c" 
 
 */
 
@@ -11,7 +11,6 @@ Capture and analyse the frequency and returns the instructions to move the robot
 #include "hal.h"
 #include <main.h>
 #include <usbcfg.h>
-#include <chprintf.h>
 
 #include <audio/microphone.h>
 #include <audio_processing.h>

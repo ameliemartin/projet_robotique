@@ -1,6 +1,6 @@
 /*
 File : process_image.h
-Author : Amelie Martin  & Carla Paillardon
+Author : Amelie Martin & Carla Paillardon
 Date : 16 may 2021
 
 Capture and analyse the image and returns a boolean to control_robot.c to determine if a crosswalk is detected by the camera
