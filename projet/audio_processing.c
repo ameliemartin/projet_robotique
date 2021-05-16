@@ -121,7 +121,6 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 	*	1024 samples, then we compute the FFTs.
 	*
 	*/
-	int8_t turning_direction = 0; 
 	static uint16_t nb_samples = 0;
 	static uint8_t mustSend = 0;
 
@@ -182,7 +181,7 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 			nb_samples = 0;
 			mustSend++;
 
-			turning_direction = sound_remote(micLeft_output);
+			sound_remote(micLeft_output);
 			
 		}
 	
