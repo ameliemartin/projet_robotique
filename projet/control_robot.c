@@ -267,12 +267,12 @@ void turn_around(bool direction, unsigned int side_sensor){ // direction 1 : gau
 
 void left_turn_around(void){
     chprintf((BaseSequentialStream *)&SD3, "contournement gauche \n");
-    turn_around(true, RIGHT_SENSOR, REAR_RIGHT_SENSOR); //comme on tourne à gauche, on prend les capteurs de droite 
+    turn_around(true, RIGHT_SENSOR); //comme on tourne à gauche, on prend les capteurs de droite 
 }
 
 void right_turn_around(void){
     chprintf((BaseSequentialStream *)&SD3, "contournement droite \n");
-    turn_around(false, 5, 4);  //1er argument dans turn around : true aller à gauche, false aller à droite 
+    turn_around(false, 5);  //1er argument dans turn around : true aller à gauche, false aller à droite 
 }
 
 /*
