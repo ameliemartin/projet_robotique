@@ -360,7 +360,7 @@ uint8_t get_mode (void){
 /*
  *  Our main thread ControlRobot, allowing our robot to react accordingly to what comes in its way, with the help of a switch.
  */
-static THD_WORKING_AREA(waControlRobot, 256);
+static THD_WORKING_AREA(waControlRobot, 512);
 static THD_FUNCTION(ControlRobot, arg) {
 
     chRegSetThreadName(__FUNCTION__);

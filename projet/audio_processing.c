@@ -24,14 +24,8 @@ static BSEMAPHORE_DECL(sendToComputer_sem, TRUE);
 
 //2 times FFT_SIZE because these arrays contain complex numbers (real + imaginary)
 static float micLeft_cmplx_input[2 * FFT_SIZE];
-static float micRight_cmplx_input[2 * FFT_SIZE];
-static float micFront_cmplx_input[2 * FFT_SIZE];
-static float micBack_cmplx_input[2 * FFT_SIZE];
 //Arrays containing the computed magnitude of the complex numbers
 static float micLeft_output[FFT_SIZE];
-static float micRight_output[FFT_SIZE];
-static float micFront_output[FFT_SIZE];
-static float micBack_output[FFT_SIZE];
 
 #define MIN_VALUE_THRESHOLD	10000
 
@@ -121,18 +115,11 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 		//loop to fill the buffers
 		for(uint16_t i = 0 ; i < num_samples ; i+=4){
 			//construct an array of complex numbers. Put 0 to the imaginary part
-			// we deactivate the mics not used in our case
-			//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT]; 
 			micLeft_cmplx_input[nb_samples] = (float)data[i + MIC_LEFT];
-			//micBack_cmplx_input[nb_samples] = (float)data[i + MIC_BACK];
-			//micFront_cmplx_input[nb_samples] = (float)data[i + MIC_FRONT];
-
+			
 			nb_samples++;
 
-			//micRight_cmplx_input[nb_samples] = 0;
 			micLeft_cmplx_input[nb_samples] = 0;
-			//micBack_cmplx_input[nb_samples] = 0;
-			//micFront_cmplx_input[nb_samples] = 0;
 
 			nb_samples++;
 
@@ -149,11 +136,8 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 			*	This is an "In Place" function.
 			*/
 
-			//doFFT_optimized(FFT_SIZE, micRight_cmplx_input);
 			doFFT_optimized(FFT_SIZE, micLeft_cmplx_input);
-			//doFFT_optimized(FFT_SIZE, micFront_cmplx_input);
-			//doFFT_optimized(FFT_SIZE, micBack_cmplx_input);
-
+			
 		   /*	Magnitude processing
 			*
 			*	Computes the magnitude of the complex numbers and
@@ -161,11 +145,8 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 			*	real numbers.
 			*
 			*/
-			//arm_cmplx_mag_f32(micRight_cmplx_input, micRight_output, FFT_SIZE);
 			arm_cmplx_mag_f32(micLeft_cmplx_input, micLeft_output, FFT_SIZE);
-			//arm_cmplx_mag_f32(micFront_cmplx_input, micFront_output, FFT_SIZE);
-			//arm_cmplx_mag_f32(micBack_cmplx_input, micBack_output, FFT_SIZE);
-
+			
 			//sends only one FFT result over 10 for 1 mic to not flood the computer
 			//sends to UART3
 			if(mustSend > 8){
@@ -191,26 +172,8 @@ float* get_audio_buffer_ptr(BUFFER_NAME_t name){
 	if(name == LEFT_CMPLX_INPUT){
 		return micLeft_cmplx_input;
 	}
-	else if (name == RIGHT_CMPLX_INPUT){
-		return micRight_cmplx_input;
-	}
-	else if (name == FRONT_CMPLX_INPUT){
-		return micFront_cmplx_input;
-	}
-	else if (name == BACK_CMPLX_INPUT){
-		return micBack_cmplx_input;
-	}
 	else if (name == LEFT_OUTPUT){
 		return micLeft_output;
-	}
-	else if (name == RIGHT_OUTPUT){
-		return micRight_output;
-	}
-	else if (name == FRONT_OUTPUT){
-		return micFront_output;
-	}
-	else if (name == BACK_OUTPUT){
-		return micBack_output;
 	}
 	else{
 		return NULL;
