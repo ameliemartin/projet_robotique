@@ -13,7 +13,6 @@ Capture and analyse the frequency and returns the instructions to move the robot
 #include <usbcfg.h>
 #include <chprintf.h>
 
-#include <motors.h>
 #include <audio/microphone.h>
 #include <audio_processing.h>
 #include <communications.h>
@@ -37,7 +36,7 @@ static float micBack_output[FFT_SIZE];
 #define MIN_VALUE_THRESHOLD	10000
 
 #define MIN_FREQ			10	//we don't analyze before this index to not use resources for nothing
-#define FREQ_LEFT			16	//250 on peut changer ça après, valeur du chiffre à peu près x15,6 
+#define FREQ_LEFT			16	//250Hz 
 #define FREQ_RIGHT			26	//406Hz 
 #define FREQ_FORWARD 		20 // 312Hz
 #define MAX_FREQ			30	//we don't analyze after this index to not use resources for nothing
@@ -53,7 +52,7 @@ static float micBack_output[FFT_SIZE];
 
 
 /*
- *	Simple function used to send the frequency to control_robot 
+ *	Simple function used to send the frequency to control_robot.c 
 */
 int8_t get_freq (void){
 	return sound_remote(micLeft_output);
@@ -68,10 +67,6 @@ int8_t sound_remote(float* data){
 	int16_t max_norm_index = -1;
 	int8_t turning_direction = 0; 
 
-	//systime_t time_begin;
-	//systime_t time_end;
-	
-
 	//search for the highest peak
 	for(uint16_t i = MIN_FREQ ; i <= MAX_FREQ ; i++){
 		if(data[i] > max_norm){
@@ -79,7 +74,6 @@ int8_t sound_remote(float* data){
 			max_norm_index = i;
 		}
 	}
-
 	
 	//turn left
 	if(max_norm_index >= FREQ_LEFT_L && max_norm_index <= FREQ_LEFT_H){
@@ -127,7 +121,8 @@ void processAudioData(int16_t *data, uint16_t num_samples){
 		//loop to fill the buffers
 		for(uint16_t i = 0 ; i < num_samples ; i+=4){
 			//construct an array of complex numbers. Put 0 to the imaginary part
-			//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT];
+			// we deactivate the mics not used in our case
+			//micRight_cmplx_input[nb_samples] = (float)data[i + MIC_RIGHT]; 
 			micLeft_cmplx_input[nb_samples] = (float)data[i + MIC_LEFT];
 			//micBack_cmplx_input[nb_samples] = (float)data[i + MIC_BACK];
 			//micFront_cmplx_input[nb_samples] = (float)data[i + MIC_FRONT];

@@ -1,3 +1,12 @@
+/*
+File : control_robot.h
+Author : Amelie Martin  & Carla Paillardon
+Date : 16 may 2021
+
+Allows the robot to react to every stimulation it can gets. 
+
+*/
+
 #ifndef CONTROL_ROBOT_H
 #define CONTROL_ROBOT_H
 

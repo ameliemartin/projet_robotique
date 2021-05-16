@@ -16,11 +16,10 @@ Capture and analyse the image and returns a boolean to control_robot.c to determ
 
 #include <process_image.h>
 
-#define MIN_CROSSWALK_LINEWIDTH 200 // à ajuster
 
-// x and y coordinate of the upper left corner of the zone to capture from the sensor
-# define X1 0
-# define Y1 460
+// x and y coordinates of the upper left corner of the zone to capture from the sensor
+#define X1 						0
+#define Y1 						460
 
 static uint16_t line_position = IMAGE_BUFFER_SIZE/2; // middle
 static uint16_t lineWidth = 0; // initialization 
@@ -28,10 +27,13 @@ static uint16_t lineWidth = 0; // initialization
 //semaphore
 static BSEMAPHORE_DECL(image_ready_sem, TRUE);
 
+
+
 /*
  *  Fucnction used to return a boolean to control_robot.c to determine if a crosswalk is detected by the camera
 */
-bool crosswalk_detected(void){ 
+bool crosswalk_detected(void){
+	 chprintf((BaseSequentialStream *)&SD3, "width : %d \n", lineWidth);
 	if(lineWidth > MIN_CROSSWALK_LINEWIDTH) { 
 		return true;
 	}
@@ -51,7 +53,8 @@ uint16_t extract_line_width(uint8_t *buffer){
 	uint8_t stop = 0, wrong_line = 0, line_not_found = 0;
 	uint32_t mean = 0;
 
-	static uint16_t last_width = PXTOCM/GOAL_DISTANCE;
+	//static uint16_t last_width = PXTOCM/GOAL_DISTANCE;
+	static uint16_t last_width = MIN_LINE_WIDTH;
 
 	//performs an average
 	for(uint16_t i = 0 ; i < IMAGE_BUFFER_SIZE ; i++){
@@ -118,9 +121,9 @@ uint16_t extract_line_width(uint8_t *buffer){
 		line_position = (begin + end)/2; //gives the line position.
 	}
 
-	//sets a maximum width or returns the measured width
-	if((PXTOCM/width) > MAX_DISTANCE){
-		return PXTOCM/MAX_DISTANCE;
+	//sets a maximum width (for which the robots acts as if it wasn't there) or returns the measured width
+	if(width > MAX_LINE_WIDTH){
+		return MIN_LINE_WIDTH; 
 	}
 	else{
 		return width;

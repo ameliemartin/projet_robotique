@@ -1,23 +1,44 @@
+/*
+File : control_robot.c
+Author : Amelie Martin  & Carla Paillardon
+Date : 16 may 2021
+
+Allows the robot to react to every stimulation it can get. 
+*/
+
+/*
+ *  Different includes used in this file 
+ */
 #include "ch.h"
 #include "hal.h"
 #include <math.h>
 #include <usbcfg.h>
 #include <chprintf.h>
 
-
 #include <main.h>
 #include <motors.h>
-#include <audio_processing.h>
 #include <control_robot.h>
-#include <process_image.h>
 #include <sensors/proximity.h>
-
+#include <process_image.h>
+#include <leds.h>
+#include <audio_processing.h>
 #include <audio/play_melody.h>
-//#include <audio/audio_thread.h>
-
 
 /*
- *  Define used to identify each IR sensor of the epuck 
+ *  Defines used for the different cases of the switch in our thread 
+ */
+#define CROSSWALK                       1
+#define GO_AROUND_OBSTACLE_VIA_LEFT     2
+#define GO_AROUND_OBSTACLE_VIA_RIGHT    3
+#define OBSTACLE_ON_RIGHT               4
+#define OBSTACLE_ON_LEFT                5
+#define DEAD_END                        6 
+#define INSTRUCTION_LEFT                7      
+#define INSTRUCTION_RIGHT               8
+#define NO_INSTRUCTION                  10
+
+/*
+ *  Defines used to identify each IR sensor of the epuck2
  */
 #define FRONT_RIGHT_SENSOR              0
 #define FRONT_RIGHT_45_SENSOR           1
@@ -29,55 +50,51 @@
 #define REAR_LEFT_SENSOR                4
 
 /*
- *  Define used for the duration of the movement of the robot
+ *  Defines used for the proximity threshold of the different sensors 
  */
-
-#define TIME_QUARTER_TURN               550
-#define TIME_HALF_TURN                  1100
-
-/*
- *  Define used for the proximity threshold of the different sensors 
- */
-#define THRESHOLD_PROX_SIDE             70 // 120 trop loin
+#define THRESHOLD_PROX_SIDE             70 
 #define THRESHOLD_PROX_FRONT            190
-#define THRESHOLD_PROX_FRONT_45         230 //80 marche pas du tout 
+#define THRESHOLD_PROX_FRONT_45         230 
 #define THRESHOLD_PROX_REAR             80
 
 /*
- *  Define used for the different speeds of the robot
+ *  Defines used for the durations and speeds of the movements of the robot
  */
+#define TIME_QUARTER_TURN               550
+#define TIME_HALF_TURN                  1100
 #define TURNING_SPEED                   600
 #define AHEAD_SPEED                     300
 #define ZERO_SPEED                      0
 
 /*
- *  Defines used for the different cases of the switch in our thread 
+ *  Defines used for the security of the robot
  */
-#define CROSSWALK                       1
-#define LEFT_TURN_AROUND                2
-#define RIGHT_TURN_AROUND               3
-#define QUARTER_TURN_LEFT               4
-#define QUARTER_TURN_RIGHT              5
-#define HALF_TURN                       6 
-#define CHECK_BEFORE_TURNING_LEFT       7      
-#define CHECK_BEFORE_TURNING_RIGHT      8
-#define NO_INSTRUCTION                  10
+#define SAFELY_PASS_OBSTACLE            1000
+#define TIME_PASSING_CROSSWALK          10000
+
+/*
+ *  Defines used for the leds 
+ */
+#define ON                              1
+#define OFF                             0
 
 
+// Variables set as static as used in different functions in this file
 static systime_t time_crossed; 
 static bool cross = false; 
 static int8_t turning_direction = 0;
 
+
 /*
- *  Function allowing the robot to move straight ahead 
+ *  Function allowing the robot to move straight ahead.
  */
 void straight_ahead(void){
     right_motor_set_speed(AHEAD_SPEED);
-    left_motor_set_speed(AHEAD_SPEED); 
+    left_motor_set_speed(AHEAD_SPEED);  
 }
 
 /*
- *  Function stoping the robot 
+ *  Function stoping the robot. 
  */
 void robot_stop(void){
     right_motor_set_speed(ZERO_SPEED);
@@ -85,198 +102,169 @@ void robot_stop(void){
 }
 
 /*
- *  Functions allowing the robot to do a quarter turn to the left or to the right 
+ *  Functions allowing the robot to do a quarter turn to the left or to the right and turning off the leds.
  */
 void quarter_turn_right(void){
 
-    right_motor_set_speed(-600); // voir ce qu'on fait 
-    left_motor_set_speed(600);
-    chThdSleepMilliseconds(550); 
+    right_motor_set_speed(-TURNING_SPEED); 
+    left_motor_set_speed(TURNING_SPEED);
+    chThdSleepMilliseconds(TIME_QUARTER_TURN);
+    clear_leds(); 
+    set_front_led(OFF); 
 }
 void quarter_turn_left(void){
 
-    right_motor_set_speed(600);
-    left_motor_set_speed(-600);
-    chThdSleepMilliseconds(550);
-
+    right_motor_set_speed(TURNING_SPEED);
+    left_motor_set_speed(-TURNING_SPEED);
+    chThdSleepMilliseconds(TIME_QUARTER_TURN);
+    clear_leds(); 
+    set_front_led(OFF);
 }
 
 /*
- *  Function allowing the robot to do a half turn 
+ *  Function allowing the robot to do a half turn and turning off the leds.
  */
 void half_turn(void){
     right_motor_set_speed(-TURNING_SPEED);
     left_motor_set_speed(TURNING_SPEED);
     chThdSleepMilliseconds(TIME_HALF_TURN);
+    clear_leds(); 
+    set_front_led(OFF);
 }
 
 /*
- *  Functions checking that the space is clear before turning to the left or to the right 
+ *  Functions used following receiving an order to turn to the left or to the right. 
+ *  They check that the space is clear before turning. If an obstacle is preventing the robot from turning, it waits to have passed it. 
  */
 void check_before_turning_left(void){
-
-    while(/*get_prox(REAR_LEFT_SENSOR) > THRESHOLD_PROX_SIDE &&*/ get_prox(LEFT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT){ //valeurs trouvées avec essais 
-        //continue tout droit 
+    // while an obstacle is still preventing the robot to turn, it keeps going ahead
+    while(get_prox(LEFT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT){ 
         straight_ahead(); 
-        chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures      
+        set_led(LED7, ON);       
      }
 
-    if ((get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT) || (get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT)){} // si rencontre un objet en face-> sort
+    if ((get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT) || (get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT)){
+    } //if a new obstacle comes in front of it, it goes back to the infinite loop to know how to avoid it. 
     else {
-                        
-        chThdSleepMilliseconds(1400); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
+        // once the way is clear, it waits for security then turns                
+        chThdSleepMilliseconds(SAFELY_PASS_OBSTACLE); 
+        clear_leds();
         quarter_turn_left(); 
     }
 
 }
-void check_before_turning_right(void){
-    while(get_prox(RIGHT_SENSOR) > THRESHOLD_PROX_SIDE && /*get_prox(REAR_RIGHT_SENSOR) > THRESHOLD_PROX_SIDE && */get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT){ //valeurs trouvées avec essais 
-    //continue tout droit 
+void check_before_turning_right(void){ // same function but for turning to the right
+    while(get_prox(RIGHT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT){ 
     straight_ahead();
-    chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
-                            
+    set_led(LED3, ON);                   
     }
 
-    if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT){} // si rencontre un objet en face -> sort de la boucle
+    if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT){} 
     else {
-        
-        chThdSleepMilliseconds(1400); //si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
-        quarter_turn_right(); // a changer si premier quart de tour gauche
+        chThdSleepMilliseconds(SAFELY_PASS_OBSTACLE);
+        clear_leds();
+        quarter_turn_right(); 
     }
 }
 
 /*
- *  Function called when the robot wants to turn around an object to the left or to the right depending on the frequency 
+ *  Function called when the robot wants to turn around an object to the left or to the right depending on the order.
+ *  It works in several steps, the first quarter turn, then move along the obstacle until it has passed it. Then turns again, pass the obstacle on its side. 
+ *  Turns a third time, moves along the obstacle on its other side for the same duration as on the first side of the obstacle.
+ *  Then, turns a last time to realign with the path the robot was initally following. 
  */
-void turn_around(bool direction, unsigned int side_sensor, unsigned int rear_sensor){ // direction 1 : gauche, 0 : droite 
+void turn_around(bool turn_left, unsigned int side_sensor){ 
 
-    systime_t time, time_start, time_stop, time_test;
-    uint16_t diff_time; //on tente avec le 16 comme c'est une diff, si ca va pas, revenir au 32 ! 
+    systime_t time, time_start, time_stop, time_test; 
+    uint16_t diff_time;  
 
-    chprintf((BaseSequentialStream *)&SD3, "dans contournement \n");
-    if(direction){
-        chprintf((BaseSequentialStream *)&SD3, "direction = 1 \n");
+    if(turn_left){ //makes the first quarter turn depending on the direction 
         quarter_turn_left();
     }
     else {
-        chprintf((BaseSequentialStream *)&SD3, "direction =  0\n");
         quarter_turn_right();
     }
-    chprintf((BaseSequentialStream *)&SD3, "premier quart de tour \n");
+    set_front_led(OFF); //turns off the led once the obstacle isn't in front of the robot anymore
 
     time_start = chVTGetSystemTime(); 
 
-    while(/*get_prox(rear_sensor) > THRESHOLD_PROX_REAR && */get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){
-        //continue tout droit 
+    // until the sensors aren't clear, the robot goes along the obstacle
+    while(get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){
         straight_ahead();
-        chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures 
     }
-
-    chprintf((BaseSequentialStream *)&SD3, "capteur cote : %d \n", get_prox(side_sensor)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
-        chprintf((BaseSequentialStream *)&SD3, " fin du while  \n");   
 
     if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){
-        chprintf((BaseSequentialStream *)&SD3, "j'ai vu qqchose entre 1 et 2  \n");
-    }
+    } //security check : if a new obstacle comes in front of it or if it detected a crosswalk, it goes back to the infinite loop to know how to avoid it 
     else {                  
-        // sinon on continue  
-        straight_ahead(); //par securite 
-        chThdSleepMilliseconds(1200); //à voir si on rajoute pas ça / si on capte toujours l'angle sur le cote en tournant avec les capteurs à -45, tenter d'ajouter du temps ou baisser la sensi des capteurs
-        time_stop = chVTGetSystemTime(); 
-        diff_time = time_stop - time_start; 
+        straight_ahead(); 
+        chThdSleepMilliseconds(SAFELY_PASS_OBSTACLE); 
+        time_stop = chVTGetSystemTime();       
+        diff_time = time_stop - time_start; //measures the time the robot took to go along the obstacle
                         
-// C deuxième quart de tour
-        if(direction){
+        if(turn_left){ // second quarter turn 
             quarter_turn_right();
         }
         else {
             quarter_turn_left();
         }
-        chprintf((BaseSequentialStream *)&SD3, "deuxieme quart de tour \n"); 
-        // on le force à repartir tout droit 
-// D1
+
         straight_ahead();
-        chThdSleepMilliseconds(1500);
-        chprintf((BaseSequentialStream *)&SD3, "j'ai dormi \n"); 
+        chThdSleepMilliseconds(SAFELY_PASS_OBSTACLE);  
 
-// D2 tant qu'il y a quelque chose sur le coté, robot avance
-        while(get_prox(side_sensor) > 55 /*&& get_prox(4) > THRESHOLD_PROX_REAR*/ && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){ //tant qu'il capte sur les côtés et que rien devant 
-            //continue tout droit 
-            straight_ahead();
-            chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures                     
+        // robot goes along the second side of the obstacle, same as before with the sensors  
+        while(get_prox(side_sensor) > THRESHOLD_PROX_SIDE && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){ 
+            straight_ahead();                    
         }
 
-        chprintf((BaseSequentialStream *)&SD3, "capteur cote : %d \n", get_prox(side_sensor)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
-        chprintf((BaseSequentialStream *)&SD3, " fin du while  \n");   
-
-
-        if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
-            chprintf((BaseSequentialStream *)&SD3, "je sors parce que qqchose devant entre 2 et 3 \n"); 
-            chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
-        chprintf((BaseSequentialStream *)&SD3, " entre 2 et 3 \n");                            
-        }
+        if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){                             
+        } //security check 
         else {
-            straight_ahead(); //par securite
-            //pour etre sur d'être dégagé 
-            chThdSleepMilliseconds(1000); 
+            straight_ahead(); 
+            chThdSleepMilliseconds(SAFELY_PASS_OBSTACLE); 
 
-// E troixième quart de tour
-            if(direction){
+            if(turn_left){ //third quarter turn 
                 quarter_turn_right();
             }
             else {
                 quarter_turn_left();    
             }
-            chprintf((BaseSequentialStream *)&SD3, "toisieme quart de tour \n");
-                           
+
             time = chVTGetSystemTime();
-            time_test = chVTGetSystemTime();
+            time_test = chVTGetSystemTime(); 
                             
-//F On avance de la meme durée 
-            while (time_test < (time + diff_time) && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){ //on longe l'obstacle dans le même temps tout en vérifiant que rien devant 
+            // we move for the same amount of time
+            while (time_test < (time + diff_time) && get_prox(FRONT_RIGHT_SENSOR) < THRESHOLD_PROX_FRONT && get_prox(FRONT_LEFT_SENSOR) < THRESHOLD_PROX_FRONT && !crosswalk_detected()){  
                 straight_ahead();
-                chThdSleepMilliseconds(10); //peut etre adapter la durée pour éviter de nouvelles mesures
-                time_test = chVTGetSystemTime();
-                //chprintf((BaseSequentialStream *)&SD3, "time test  = %d\n", time_test); 
+                time_test = chVTGetSystemTime(); // we check time_test at each iteration
             }
-            if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){ // si quelque chose apparait devant, on retourne dans la boucle principale pour savoir pas où l'éviter 
-                chprintf((BaseSequentialStream *)&SD3, "je sors parce que qqchose devant entre 3 et 4 \n"); 
-                chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
-                chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
-                chprintf((BaseSequentialStream *)&SD3, " entre 3 et 4 \n");                  
-            }
+            if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT  || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT || crosswalk_detected()){                
+            } // security check 
             else{
-// G quatrieme quart de tour 
-                if(direction){
+
+                if(turn_left){ // final quarter turn, back on our original path
                     quarter_turn_left(); 
                 }
                 else{
                     quarter_turn_right();    
                 }
                 straight_ahead();
-                chprintf((BaseSequentialStream *)&SD3, "quatrieme quart de tour \n");
             }
         } 
     } 
 }
-
+/*
+ *  Functions calling the function turn_around depending if the order is to go on the left or on the right. 
+ */
 void left_turn_around(void){
-    chprintf((BaseSequentialStream *)&SD3, "contournement gauche \n");
-    turn_around(true, RIGHT_SENSOR, REAR_RIGHT_SENSOR); //comme on tourne à gauche, on prend les capteurs de droite 
+    turn_around(true, RIGHT_SENSOR); 
+}
+void right_turn_around(void){
+    turn_around(false, LEFT_SENSOR);  
 }
 
-void right_turn_around(void){
-    chprintf((BaseSequentialStream *)&SD3, "contournement droite \n");
-    turn_around(false, 5, 4);  //1er argument dans turn around : true aller à gauche, false aller à droite 
-}
 
 /*
- *  Function allowing our robot to "bark" when stopping at a cross walk 
+ *  Function allowing our robot to "bark" when stopping at a cross walk. 
  */
 void bark(void){
     playNote(NOTE_CS4,400);
@@ -284,179 +272,155 @@ void bark(void){
 }
 
 /*
- *  Function allowing our robot to wait for an order once reaching a cross walk and then crossin it 
+ *  Function allowing our robot to wait for the order to move forward once reaching a cross walk and then crossing it.  
  */
 void crosswalk (void){
 
     robot_stop();
-    bark();
-    while (get_freq() != MOVE_FORWARD)
+    bark(); // signals the presence of a crosswalk to its master 
+    while (get_freq() != MOVE_FORWARD) // wait for the order to move forward 
     {}
-    time_crossed = chVTGetSystemTime() + MS2ST(10000); //duree de traversée du passage piéton à determiner en fonction de la vitesse
-    cross = true; 
+    time_crossed = chVTGetSystemTime() + MS2ST(TIME_PASSING_CROSSWALK); 
+    cross = true; // cross is set at true, the robot will not respond to orders for the duration of the crossing. 
     straight_ahead(); 
 }
 
 
 /*
- *  Function deciding in which case our robot is in, then sending it to the thread to do the actions required
+ *  Function deciding in which case our robot is in, then sending it to the switch in our main thread to do the required actions. 
+ *  It will first check for a crosswalk, as it is the most dangerous obstacle it can encounters. 
+ *  Then, if none is ahead, the robot will use its different sensors to detect the presence of obstacles in front of it and on its sides, and then move accordingly. 
+ *  Finally, if the road is clear and if there are no crosswalk, the robot will look for orders to turn, given by its master. 
  */
 uint8_t get_mode (void){
-    // variables de la fonction : 
-
-    chprintf((BaseSequentialStream *)&SD3, "capteur de droite : %d \n", get_prox(2)); 
-    chprintf((BaseSequentialStream *)&SD3, "capteur de gauche : %d \n", get_prox(5)); 
-    //s'il detecte qque chose devant lui
-    if (crosswalk_detected()){
-        chprintf((BaseSequentialStream *)&SD3, "cas 1 \n");
-
-        if(cross == false){
-            chprintf((BaseSequentialStream *)&SD3, "passage pieton \n"); 
-            return CROSSWALK;
+    
+    if (crosswalk_detected()){ 
+        if(cross == false){ // check if it is not already crossing a crosswalk
+            return CROSSWALK; 
         }
     }
-    else if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT || get_prox(FRONT_RIGHT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT) // à ajuster et à mesurer après
-    {
-        chprintf((BaseSequentialStream *)&SD3, "objet en face \n");
-        //contournement d'un objet: si il detecte un objet devant lui mais pas sur les côtés : va contourner l'obstacle
-        if(get_prox(RIGHT_SENSOR) <= THRESHOLD_PROX_SIDE && get_prox(LEFT_SENSOR) <= THRESHOLD_PROX_SIDE )
+    else if (get_prox(FRONT_RIGHT_SENSOR) > THRESHOLD_PROX_FRONT || get_prox(FRONT_RIGHT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_45_SENSOR) > THRESHOLD_PROX_FRONT_45 || get_prox(FRONT_LEFT_SENSOR) > THRESHOLD_PROX_FRONT) 
+    { //something is in front of the robot
+    
+        if(get_prox(RIGHT_SENSOR) <= THRESHOLD_PROX_SIDE && get_prox(LEFT_SENSOR) <= THRESHOLD_PROX_SIDE ) // there is nothing on the sides
         {
-            chprintf((BaseSequentialStream *)&SD3, "rien sur les cotes \n");
-            turning_direction = get_freq(); 
-// Dans ces boucles, critères de la fréquence à adapter plus tard  
-            if(turning_direction == TURN_LEFT){ //contournement par la gauche de l'obstacle 
-                chprintf((BaseSequentialStream *)&SD3, "contournement par gauche \n");
-                return LEFT_TURN_AROUND; //left_turn_around(); 
+            set_front_led(ON);
+            turning_direction = get_freq(); // gets the frequency of the order to know by which side to go around 
+
+            if(turning_direction == TURN_LEFT){ 
+                return GO_AROUND_OBSTACLE_VIA_LEFT; 
             }
-            else if (turning_direction == TURN_RIGHT){ //contournement par la droite de l'obstacle  
-                chprintf((BaseSequentialStream *)&SD3, "contournement par droite \n"); 
-                return RIGHT_TURN_AROUND; //right_turn_around();
+            else if (turning_direction == TURN_RIGHT){ 
+                return GO_AROUND_OBSTACLE_VIA_RIGHT; 
             }
-            else { // si pas de fréquence ou pas dans les gammes de fréquence, on attend qu'on nous en donne une
-                while (turning_direction == DONT_TURN){ //ajouter condition sur freq 3 ? 
-                    //chprintf((BaseSequentialStream *)&SD3, "pas de direction \n"); 
+            else { // if there is no known frequency, the robot waits for its order
+                while (turning_direction != TURN_LEFT && turning_direction != TURN_RIGHT){ 
                     robot_stop();
                     turning_direction = get_freq(); 
                 }
             }   
         }
-        // quart de tour vers la gauche comme objet à droite
+        // obstacles in front and on the right 
         else if (get_prox(RIGHT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(LEFT_SENSOR) <= THRESHOLD_PROX_SIDE){
-            chprintf((BaseSequentialStream *)&SD3, "objet sur la droite \n"); 
-            return QUARTER_TURN_LEFT; //quarter_turn_left();
+            set_front_led(ON); // lights the corresponding leds to signal it to other users 
+            set_led(LED3, ON);
+            return OBSTACLE_ON_RIGHT; 
         }
-        // quart de tour vers la droite quand objet à gauche
+        // obstacles in front and on the left 
         else if (get_prox(LEFT_SENSOR) > THRESHOLD_PROX_SIDE && get_prox(RIGHT_SENSOR) <= THRESHOLD_PROX_SIDE){
-            chprintf((BaseSequentialStream *)&SD3, "objet sur la gauche \n"); 
-            return QUARTER_TURN_RIGHT; //quarter_turn_right();
+            set_front_led(ON);
+            set_led(LED7, ON);
+            return OBSTACLE_ON_LEFT; 
         }
-        // dans un cul de sac, fait demi tour
+        // reaches a dead end 
         else {
-            chprintf((BaseSequentialStream *)&SD3, "cul de sac \n"); 
-            return HALF_TURN; //half_turn();
+            set_front_led(ON);        
+            set_led(LED3, ON);
+            set_led(LED7, ON);
+            return DEAD_END; 
         }
     }
-    else { // si pas d'obstacle, avance et attend un ordre de son maitre pour tourner
-        //chprintf((BaseSequentialStream *)&SD3, "cas 3 \n");
-        if (turning_direction == get_freq() || cross == true){
+    else {
+        if (turning_direction == get_freq() || cross == true){ // check if there was a chancge in frequency and that it is not currently crossing a crosswalk at the moment 
         }
-        if (turning_direction != get_freq() && cross == false) { 
-            chprintf((BaseSequentialStream *)&SD3, "j'ecoute un ordre \n"); 
-            turning_direction = get_freq();
-            if(turning_direction == TURN_LEFT){ //ordre de tourner à gauche
-                chprintf((BaseSequentialStream *)&SD3, "ordre de tourner à gauche \n"); 
-                return CHECK_BEFORE_TURNING_LEFT; //check_before_turning_left();
+        if (turning_direction != get_freq() && cross == false) { // case of a new order 
+            turning_direction = get_freq(); 
+
+            if(turning_direction == TURN_LEFT){ 
+                return INSTRUCTION_LEFT; 
             } 
-            if(turning_direction == TURN_RIGHT){ // ordre de touner à droite
-                chprintf((BaseSequentialStream *)&SD3, "ordre de tourner à droite \n"); 
-                return CHECK_BEFORE_TURNING_RIGHT; //check_before_turning_right();
+            if(turning_direction == TURN_RIGHT){ 
+                return INSTRUCTION_RIGHT; 
             }
         } 
     }
-    return NO_INSTRUCTION;
+    return NO_INSTRUCTION; // default case 
 }
 
-
+/*
+ *  Our main thread ControlRobot, allowing our robot to react accordingly to what comes in its way, with the help of a switch.
+ */
 static THD_WORKING_AREA(waControlRobot, 256);
 static THD_FUNCTION(ControlRobot, arg) {
 
     chRegSetThreadName(__FUNCTION__);
     (void)arg;
 
-    systime_t time; //time_start, time_stop, time_test, time_crossed;
-    //uint32_t diff_time; 
-    //uint16_t lineWidth = 0;
-
-   // int diff_prox_left, diff_prox_right; // pour l'alignement
-    //float distance_cm;
-    //int16_t turning_direction = 0; 
-
-    //bool order = true;
-    //bool cross = false; 
-
+    systime_t time; 
     while(1){
-        chprintf((BaseSequentialStream *)&SD3, "debut du while  \n");
         
         time = chVTGetSystemTime();
-
-        /*chprintf((BaseSequentialStream *)&SD3, "capteur de droite : %d \n", get_prox(2)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur de gauche : %d \n", get_prox(5)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite : %d \n", get_prox(0)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche : %d \n", get_prox(7));
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant droite 45 : %d \n", get_prox(1)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur avant gauche 45 : %d \n", get_prox(6));
-        chprintf((BaseSequentialStream *)&SD3, "capteur arriere droite : %d \n", get_prox(3)); 
-        chprintf((BaseSequentialStream *)&SD3, "capteur arrire gauche : %d \n", get_prox(4));*/
         
-        straight_ahead();
+        straight_ahead(); // we set the robot to move forward
 
-        if (chVTGetSystemTime() > time_crossed){
+        if (chVTGetSystemTime() > time_crossed){ // if we are still on a crosswalk, the robot doesnt respond to orders 
             cross = false; 
         }
         
-        switch(get_mode()){
+        switch(get_mode()){  //uses the function get_mode to know in which case the robot is 
 
-            case CROSSWALK: 
-            crosswalk(); 
+            case CROSSWALK:
+            crosswalk();
                 break; 
 
-            case LEFT_TURN_AROUND: 
+            case GO_AROUND_OBSTACLE_VIA_LEFT: 
             left_turn_around();
                 break; 
 
-            case RIGHT_TURN_AROUND: 
-            right_turn_around(); 
+            case GO_AROUND_OBSTACLE_VIA_RIGHT: 
+            right_turn_around();
                 break; 
 
-            case QUARTER_TURN_LEFT: 
-            quarter_turn_left(); 
+            case OBSTACLE_ON_RIGHT: 
+            quarter_turn_left();
                 break; 
 
-            case QUARTER_TURN_RIGHT: 
+            case OBSTACLE_ON_LEFT:
             quarter_turn_right(); 
                 break; 
 
-            case HALF_TURN: 
+            case DEAD_END:
             half_turn(); 
                 break; 
 
-            case CHECK_BEFORE_TURNING_LEFT:
+            case INSTRUCTION_LEFT:
             check_before_turning_left(); 
                 break; 
 
-            case CHECK_BEFORE_TURNING_RIGHT:
+            case INSTRUCTION_RIGHT:
             check_before_turning_right(); 
                 break; 
 
             case NO_INSTRUCTION:
                 break; 
-
         }
         chThdSleepUntilWindowed(time, time + MS2ST(10));
     }
 }
     
-
+/*
+ *  Starts our thread ControlRobot in the main.c 
+ */
 void control_robot_start(void){
 	chThdCreateStatic(waControlRobot, sizeof(waControlRobot), NORMALPRIO, ControlRobot, NULL);
 }

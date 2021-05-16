@@ -19,20 +19,20 @@ Initialize the different modules and starts the threads
 #include <camera/po8030.h>
 #include <chprintf.h>
 
-#include <fft.h>
 #include <communications.h>
 #include <arm_math.h>
 
-
-#include <control_robot.h>
-#include <audio_processing.h>
 #include <sensors/proximity.h>
-#include <spi_comm.h>
+#include <control_robot.h>
+
+#include <fft.h>
 #include <audio/microphone.h>
 #include <audio/audio_thread.h>
+#include <audio_processing.h>
+
 #include <process_image.h>
 
-// pour utilisation des fichiers proxi
+// bus used for the proximity functions 
 messagebus_t bus;
 MUTEX_DECL(bus_lock);
 CONDVAR_DECL(bus_condvar);
@@ -64,16 +64,13 @@ int main(void)
     mpu_init();
 
 // COMMUNICATION
-
     //initialize  the inter process communication bus
-     messagebus_init(&bus, &bus_lock, &bus_condvar);
-
+    messagebus_init(&bus, &bus_lock, &bus_condvar);
     //Starts the serial and the USB communications
     serial_start();
     usb_start();
 
 // MOTORS
-
 	//Initialize the control of the motors
 	motors_init();
 

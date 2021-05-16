@@ -13,7 +13,7 @@ Capture and analyse the frequency and returns the instructions to move the robot
 #define FFT_SIZE 	1024
 
 /*
- * Those are the instruction to move the robot depending on the frequency sent to contro_robot.c
+ * Those are the instruction to move the robot depending on the frequency sent to control_robot.c
  */
 #define DONT_TURN               0
 #define TURN_LEFT               1
